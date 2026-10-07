@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>使い方ガイド｜リフレーム工房</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@400;500;600&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="icon" href="icon-192.png">
+<style>
+  :root{
+    --bg: #FAF8F3;
+    --panel: #FFFFFF;
+    --rim: #E7E2D8;
+    --safelight: #B8903C;
+    --film: #1A1512;
+    --muted: #8A8178;
+    --dark: #1A1512;
+    --developed: #8A6A22;
+    --serif: "Shippori Mincho", serif;
+    --sans: "Zen Kaku Gothic New", sans-serif;
+  }
+
+  *{ box-sizing: border-box; }
+
+  html, body{
+    margin: 0;
+    background: var(--bg);
+    color: var(--film);
+    font-family: var(--sans);
+    line-height: 1.8;
+  }
+
+  .stage{
+    max-width: 640px;
+    margin: 0 auto;
+    padding: 28px 22px 80px;
+  }
+
+  .back-link{
+    display: inline-block;
+    color: var(--muted);
+    font-size: 13px;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    margin-bottom: 20px;
+  }
+
+  header{
+    text-align: center;
+    margin-bottom: 30px;
+  }
+
+  .logo{
+    width: 48px;
+    height: 48px;
+    margin-bottom: 10px;
+  }
+
+  h1{
+    font-family: var(--serif);
+    font-weight: 500;
+    font-size: clamp(22px, 6vw, 28px);
+    margin: 0 0 8px;
+  }
+
+  header p{
+    font-size: 14px;
+    color: var(--muted);
+    margin: 0;
+  }
+
+  .intro-table{
+    width: 100%;
+    border-collapse: collapse;
+    margin: 24px 0 32px;
+    font-size: 14px;
+  }
+
+  .intro-table th, .intro-table td{
+    border: 1px solid var(--rim);
+    padding: 9px 12px;
+    text-align: left;
+  }
+
+  .intro-table th{
+    background: rgba(184,144,60,0.08);
+    color: var(--developed);
+    font-weight: 500;
+  }
+
+  .note{
+    font-size: 13.5px;
+    color: var(--muted);
+    background: rgba(184,144,60,0.06);
+    border: 1px solid var(--rim);
+    border-radius: 6px;
+    padding: 12px 14px;
+    margin: 16px 0;
+  }
+
+  section{
+    border: 1px solid var(--rim);
+    border-radius: 8px;
+    padding: 22px 22px 18px;
+    margin-bottom: 20px;
+    background: var(--panel);
+  }
+
+  h2{
+    font-family: var(--serif);
+    font-size: 19px;
+    font-weight: 500;
+    color: var(--developed);
+    margin: 0 0 10px;
+  }
+
+  h3{
+    font-family: var(--sans);
+    font-size: 14.5px;
+    font-weight: 700;
+    color: var(--film);
+    margin: 18px 0 8px;
+  }
+
+  p{
+    font-size: 14.5px;
+    margin: 0 0 10px;
+  }
+
+  ol, ul{
+    font-size: 14.5px;
+    padding-left: 22px;
+    margin: 0 0 10px;
+  }
+
+  li{ margin-bottom: 6px; }
+
+  hr{
+    border: none;
+    border-top: 1px solid var(--rim);
+    margin: 30px 0;
+  }
+
+  .when-tag{
+    display: inline-block;
+    font-size: 12.5px;
+    color: var(--safelight);
+    background: rgba(184,144,60,0.10);
+    border-radius: 20px;
+    padding: 3px 12px;
+    margin-bottom: 14px;
+  }
+
+  footer{
+    text-align: center;
+    margin-top: 40px;
+  }
+</style>
+</head>
+<body>
+
+<div class="stage">
+  <a class="back-link" href="index.html">← アプリに戻る</a>
+
+  <header>
+    <img class="logo" src="icon-192.png" alt="リフレーム工房のロゴ">
+    <h1>リフレーム工房 使い方ガイド</h1>
+    <p>無理に前向きにならなくていい。「ネガティブ思考」という高精度センサーの、向きを変えるだけ。</p>
+  </header>
+
+  <p>最初に開くと、<strong>A〜Eの5つから選ぶホーム画面</strong>が表示されます。決まった順番はありません。今の自分に必要なものだけを、必要な時に使ってください。</p>
+
+  <table class="intro-table">
+    <tr><th>機能</th><th>こんな時に</th></tr>
+    <tr><td>A. 思考反転</td><td>頭の中がざわざわする時に</td></tr>
+    <tr><td>B. 意図の再定義</td><td>気が重いタスクがある時に</td></tr>
+    <tr><td>C. 物理的強制リセット</td><td>もう何も考えられない時に</td></tr>
+    <tr><td>D. 過去トラDB</td><td>過去の経験を安心材料にしたい時に</td></tr>
+    <tr><td>E. マイページ</td><td>ゆっくり自分と向き合いたい時に</td></tr>
+  </table>
+
+  <p>各ワーク画面の左上にある「← 選択画面へ戻る」で、いつでもホーム画面に戻れます。ホーム画面右上の「大きくする」ボタンで、アプリ全体の文字を一段階大きくできます。「あなたのセンサー」は、各法則が反応した回数を記録し、3回ごとにレベルアップします。</p>
+
+  <hr>
+
+  <section>
+    <span class="when-tag">こんな時に：頭の中がざわざわする時に</span>
+    <h2>A. 思考反転ワーク</h2>
+    <p>今抱えている考えを、4つの法則(慎重さ／警戒心／現状不満／否定的な視点)のどれに当てはまるかClaudeが判定し、「あなたは〜なのではありません。〜が作動しています」という宣言カードを返します。</p>
+    <h3>使い方</h3>
+    <ol>
+      <li>今の考えを入力欄に書く(任意で「きっかけや背景」も追加できます)</li>
+      <li>「反転する」を押すと、Claudeが判定した宣言カードが表示されます</li>
+      <li>カード内の文章は「✎ 自分の言葉で書き換える」で編集可能。「ひとことメモ」欄も自由に使えます</li>
+      <li>気に入ったら「＋ 自分ルールとして保存する」でDに保存できます</li>
+    </ol>
+    <p>カードには、AIが生成した文章は必ずしも当てはまるとは限らないこと、自分の言葉に書き換える作業自体が内面の変化につながることを添えています。</p>
+    <h3>🌙 夜の反省会モード</h3>
+    <p>夜間(22時〜5時)は自動でチェックが入ります。「感情」と「事実」を分けて書くことで、感情的な反省会にならないようにする書き方です。</p>
+  </section>
+
+  <section>
+    <span class="when-tag">こんな時に：気が重いタスクがある時に</span>
+    <h2>B. 意図の再定義ワーク</h2>
+    <p>「やらされている義務」を、「自分で選んだ価値」として書き換えます。</p>
+    <h3>使い方</h3>
+    <ol>
+      <li>STEP1：愚痴や気が重いタスクをそのまま書く</li>
+      <li>STEP2：獲得したい価値(愛・感情／成長／資産／貢献)を1つ選ぶ</li>
+      <li>STEP3：Claudeが1行の意図案を提案。その場で文章を編集し、「この内容で保存する」を押すと「今日の意図リスト」に残ります</li>
+    </ol>
+    <h3>今日の意図リスト</h3>
+    <ul>
+      <li>チェックボックスで「今日やった」を記録できます</li>
+      <li>気に入った意図は「🎴 自分への一言にする」で、ロゴ入りの白いカード画像を作成できます。「共有 / 保存する」ボタンでスマホの共有シートから画像として保存できます</li>
+    </ul>
+  </section>
+
+  <section>
+    <span class="when-tag">こんな時に：もう何も考えられない時に</span>
+    <h2>C. 物理的強制リセット</h2>
+    <p>考える力そのものが底をついた時、体を動かすことに主導権を渡すためのタイマー付きガイドです。</p>
+    <h3>使い方</h3>
+    <ol>
+      <li>3つのカテゴリ(場所を変える／体を動かす／呼吸・ケア)から、やる活動にチェックを入れる</li>
+      <li>各活動の時間を分単位で設定(自分で考えた活動を追加することも可能)</li>
+      <li>「確定する」を押すと、選んだ活動の一覧と合計時間が表示されます</li>
+      <li>一覧の▲▼で実行する順番を入れ替えられます</li>
+      <li>「はじめる」でタイマー付きのガイドが始まります。飛ばしたい時は「このアクションを飛ばす」で次へ進めます</li>
+    </ol>
+    <p>設定した内容(チェック・時間・順番)は自動で保存され、「設定のリセット」を押すまで維持されます。</p>
+    <div class="note">強いつらさが続く場合、ページ下部によりそいホットライン(0120-279-338／24時間)など専門窓口の案内があります。アプリだけで抱え込まないでください。</div>
+  </section>
+
+  <section>
+    <span class="when-tag">こんな時に：過去の経験を安心材料にしたい時に</span>
+    <h2>D. 過去トラDB</h2>
+    <p>過去の失敗を「安全装置」として保存しておくデータベースです。</p>
+    <h3>登録方法</h3>
+    <ul>
+      <li>画面上部の「直接登録する」フォームから登録(過去の失敗・発生パターン・自分ルールを入力)</li>
+      <li>Aの結果カードから「自分ルールとして保存する」で登録することも可能(次の一歩・ひとことメモも自動で引き継がれます)</li>
+    </ul>
+    <h3>絞り込み</h3>
+    <p>一覧の上にある「期間（から／まで）」と「センサー」で、記録を絞り込めます。「フィルターを解除」で元に戻ります。</p>
+    <h3>詳細と対策</h3>
+    <p>各記録の「詳細」を押すと、登録日・次の小さな一歩・ひとことメモが確認できます。「対策」欄では、後から思いついた対策を追記でき、追加した日付も一緒に記録されます。</p>
+    <h3>Aとの連携</h3>
+    <p>Aで新しい考えを反転した際、過去に同じ法則の記録があれば「過去トラDBと一致」という一言が結果カードに表示されます。</p>
+    <h3>Excel出力</h3>
+    <p>「Excelに出力する」で、登録内容一式を<code>.xlsx</code>ファイルとしてダウンロードできます。</p>
+  </section>
+
+  <section>
+    <span class="when-tag">こんな時に：ゆっくり自分と向き合いたい時に</span>
+    <h2>E. マイページ</h2>
+    <p>Bで保存した「今日の意図」と、Dの過去トラを、日付ごとにまとめて大きな文字で振り返れる画面です。</p>
+    <ul>
+      <li>最新の日付が一番上に表示され、下にスクロールすると過去の記録を遡れます</li>
+      <li>特定の日だけに絞り込む機能は今のところありません(すべての記録が日付順に並びます)</li>
+    </ul>
+  </section>
+
+  <hr>
+
+  <h2 style="color:var(--film);">アプリとして使う（ホーム画面に追加）</h2>
+  <p>スマホでこのアプリを開いた時、ブラウザの共有メニューから「ホーム画面に追加」(iPhone)または「アプリをインストール」(Android)を選ぶと、アイコンをタップするだけで開けるアプリのような使い方ができます。</p>
+
+  <h2 style="color:var(--film);">データの保存について</h2>
+  <p>チェック内容・保存した記録・カード等は、<strong>今使っているブラウザ・端末の中だけ</strong>に保存されます(他の端末やブラウザとは共有されません)。次回も同じ端末・同じブラウザで開けば引き継がれますが、ブラウザのデータを消去すると一緒に消えてしまいます。心配な記録は、Dの「Excelに出力する」で定期的に書き出しておくと安心です。</p>
+
+  <footer>
+    <a class="back-link" href="index.html">← アプリに戻る</a>
+  </footer>
+</div>
+
+</body>
+</html>

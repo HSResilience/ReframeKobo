@@ -1560,7 +1560,7 @@
   // 公開ページを未ログインの訪問者にも使えるようにする場合は、
   // reframe-proxy-README.md の手順でバックエンドを用意し、
   // このURLをそのバックエンドのURLに書き換えてください。
-  const API_ENDPOINT = 'https://reframe-proxy.antonelahiga.workers.dev/';
+  const API_ENDPOINT = 'https://api.anthropic.com/v1/messages';
 
   /* ========== 共通: ホーム画面⇔各セクションの切り替え ========== */
   const homeScreen = document.getElementById('homeScreen');
@@ -1619,15 +1619,15 @@
   }
 
   async function loadTextSize(){
-    try {
-      const res = await window.storage.get(TEXT_SIZE_KEY, false);
-      if (res && res.value){
-        const parsed = JSON.parse(res.value);
+    const raw = loadLocal(TEXT_SIZE_KEY);
+    if (raw){
+      try {
+        const parsed = JSON.parse(raw);
         isLargeText = !!parsed.large;
         applyTextSize();
+      } catch (e) {
+        // 保存内容が壊れている場合はデフォルトのまま
       }
-    } catch (e) {
-      // 初回利用時などキーが無い場合はここに来る
     }
   }
 
@@ -1637,28 +1637,28 @@
     return d.innerHTML;
   }
 
-  function delay(ms){
-    return new Promise(resolve => setTimeout(resolve, ms));
+  // このアプリはブラウザのlocalStorageに保存する（この端末・このブラウザだけに残る）。
+  // プライベートブラウジングやストレージ容量超過では失敗することがあるため、
+  // 必ずtry/catchで囲んで使う。
+  const LS_PREFIX = 'reframe-koubou:';
+
+  async function saveWithRetry(key, value){
+    try {
+      localStorage.setItem(LS_PREFIX + key, value);
+      return true;
+    } catch (e) {
+      console.error('保存に失敗しました', key, e);
+      return false;
+    }
   }
 
-  // window.storage.set は一時的なサーバーエラーで失敗することがあるため、
-  // 短い間隔を空けて自動で再試行する共通ヘルパー。
-  async function saveWithRetry(key, value, shared, retries){
-    const maxRetries = typeof retries === 'number' ? retries : 2;
-    let lastError = null;
-    for (let attempt = 0; attempt <= maxRetries; attempt++){
-      try {
-        await window.storage.set(key, value, shared);
-        return true;
-      } catch (e) {
-        lastError = e;
-        if (attempt < maxRetries){
-          await delay(800 * (attempt + 1));
-        }
-      }
+  function loadLocal(key){
+    try {
+      return localStorage.getItem(LS_PREFIX + key);
+    } catch (e) {
+      console.error('読み込みに失敗しました', key, e);
+      return null;
     }
-    console.error('保存に失敗しました（' + (maxRetries + 1) + '回試行）', key, lastError);
-    return false;
   }
 
   /* ========== セクション1: 思考反転 ========== */
@@ -1791,11 +1791,9 @@
   }
 
   async function loadBadges(){
-    try {
-      const res = await window.storage.get(BADGE_KEY, false);
-      if (res && res.value){ badgeCounts = JSON.parse(res.value); }
-    } catch (e) {
-      // 初回利用時など、キーが無い場合はここに来る
+    const raw = loadLocal(BADGE_KEY);
+    if (raw){
+      try { badgeCounts = JSON.parse(raw); } catch (e) { /* 壊れていればデフォルトのまま */ }
     }
     renderBadges();
   }
@@ -2198,18 +2196,11 @@
   }
 
   async function loadDB(){
-    try {
-      const res = await window.storage.get(DB_KEY, false);
-      if (res && res.value){
-        troubleDB = JSON.parse(res.value);
-        renderDBList();
-      } else {
-        renderDBList();
-      }
-    } catch (e) {
-      // キーが無い場合はここに来る（初回利用など）
-      renderDBList();
+    const raw = loadLocal(DB_KEY);
+    if (raw){
+      try { troubleDB = JSON.parse(raw); } catch (e) { /* 壊れていれば空のまま */ }
     }
+    renderDBList();
   }
 
   loadDB();
@@ -2695,14 +2686,14 @@
   }
 
   async function loadIntentLog(){
-    try {
-      const res = await window.storage.get(STORAGE_KEY, false);
-      if (res && res.value){
-        intentLog = JSON.parse(res.value);
+    const raw = loadLocal(STORAGE_KEY);
+    if (raw){
+      try {
+        intentLog = JSON.parse(raw);
         renderIntentLog();
+      } catch (e) {
+        // 保存内容が壊れている場合は空のまま
       }
-    } catch (e) {
-      // キーが無い場合はここに来る（初回利用など）。何もしなくてよい。
     }
   }
 
@@ -2773,16 +2764,16 @@
   }
 
   async function loadResetConfig(){
-    try {
-      const res = await window.storage.get(RESET_CONFIG_KEY, false);
-      if (res && res.value){
-        const saved = JSON.parse(res.value);
+    const raw = loadLocal(RESET_CONFIG_KEY);
+    if (raw){
+      try {
+        const saved = JSON.parse(raw);
         if (Array.isArray(saved) && saved.length){
           activityState = saved;
         }
+      } catch (e) {
+        // 保存内容が壊れている場合はデフォルトのまま
       }
-    } catch (e) {
-      // 初回利用時などキーが無い場合はここに来る
     }
     renderResetCategories();
   }

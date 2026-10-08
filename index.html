@@ -81,12 +81,28 @@
   /* --- ホーム画面（A〜E ナビカード・文字サイズ切替） --- */
   .home-screen.hidden{ display: none; }
 
+  .top-utility-row{
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 18px;
+    flex-wrap: wrap;
+  }
+
+  .guide-link{
+    font-size: 13px;
+    color: var(--developed);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+
   .text-size-row{
     display: flex;
     align-items: center;
     justify-content: flex-end;
     gap: 10px;
-    margin-bottom: 18px;
+    margin-bottom: 0;
     font-size: 14.5px;
     color: var(--muted);
   }
@@ -1209,9 +1225,12 @@
   </header>
 
   <div class="home-screen" id="homeScreen">
-    <div class="text-size-row">
-      <span>文字サイズ</span>
-      <button type="button" id="textSizeBtn" class="text-size-btn">大きくする</button>
+    <div class="top-utility-row">
+      <a class="guide-link" href="manual.html">使い方ガイド</a>
+      <div class="text-size-row">
+        <span>文字サイズ</span>
+        <button type="button" id="textSizeBtn" class="text-size-btn">大きくする</button>
+      </div>
     </div>
 
     <div class="nav-cards">
@@ -1260,7 +1279,7 @@
           <svg viewBox="0 0 48 48"><rect x="7" y="9" width="34" height="30" rx="2" fill="none" stroke="currentColor" stroke-width="2.4"/><path d="M7 17 L41 17" stroke="currentColor" stroke-width="2.4"/><path d="M15 6 L15 12 M33 6 L33 12" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/><path d="M14 24 L20 24 M24 24 L30 24 M34 24 L34 24 M14 30 L20 30 M24 30 L30 30" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
         </span>
         <span class="nav-card-body">
-          <span class="nav-card-title">マイページ：保存した言葉を、大きな文字で振り返る</span>
+          <span class="nav-card-title">E. マイページ：保存した言葉を、大きな文字で振り返る</span>
           <span class="nav-card-when">ゆっくり自分と向き合いたい時に</span>
         </span>
       </button>

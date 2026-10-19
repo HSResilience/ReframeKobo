@@ -502,6 +502,103 @@
 
   .sensor-icon svg{ width: 100%; height: 100%; }
 
+  /* --- 傾向グラフ --- */
+  .period-tabs{
+    display: flex;
+    gap: 8px;
+    margin-bottom: 18px;
+  }
+
+  .period-tab{
+    flex: 1;
+    font-family: var(--sans);
+    font-size: 13.5px;
+    color: var(--muted);
+    background: transparent;
+    border: 1px solid var(--rim);
+    border-radius: 20px;
+    padding: 8px 10px;
+    cursor: pointer;
+    text-align: center;
+  }
+
+  .period-tab.active{
+    color: var(--dark);
+    background: var(--safelight);
+    border-color: var(--safelight);
+  }
+
+  .trend-summary{
+    font-family: var(--serif);
+    font-size: 17px;
+    color: var(--film);
+    margin-bottom: 26px;
+    line-height: 1.7;
+  }
+
+  .trend-chart-block{ margin-bottom: 30px; }
+
+  .bar-chart{ display: flex; flex-direction: column; gap: 10px; }
+
+  .bar-row{
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .bar-label{
+    flex: 0 0 auto;
+    width: 84px;
+    font-size: 13px;
+    color: var(--muted);
+  }
+
+  .bar-track{
+    flex: 1;
+    height: 14px;
+    background: var(--dark2);
+    border-radius: 7px;
+    overflow: hidden;
+  }
+
+  .bar-fill{
+    height: 100%;
+    background: var(--safelight);
+    border-radius: 7px;
+    transition: width 0.4s ease;
+  }
+
+  .bar-value{
+    flex: 0 0 auto;
+    width: 26px;
+    text-align: right;
+    font-size: 13px;
+    color: var(--film);
+  }
+
+  .stack-legend{ display:flex; flex-wrap:wrap; gap:6px 14px; margin-bottom:14px; font-size:13px; color:var(--muted); }
+  .stack-legend-item{ display:inline-flex; align-items:center; gap:6px; }
+  .stack-swatch{ display:inline-block; width:12px; height:12px; border-radius:3px; }
+  .stack-scroll{ overflow-x:auto; padding-bottom:6px; }
+  .stack-chart{ display:flex; align-items:flex-end; gap:8px; min-width:100%; width:max-content; }
+  .stack-col{ flex:1 0 44px; display:flex; flex-direction:column; align-items:center; }
+  .stack-bar-area{ width:100%; display:flex; flex-direction:column; align-items:center; justify-content:flex-end; justify-content:center; border-bottom:1px solid var(--rim); }
+  .stack-bar{ width:70%; max-width:36px; display:flex; flex-direction:column-reverse; border-radius:4px 4px 0 0; overflow:hidden; min-height:0; }
+  .stack-seg{ width:100%; }
+  .stack-total{ font-size:13px; color:var(--film); margin-bottom:4px; line-height:18px; }
+  .stack-label{ font-size:13px; color:var(--film); margin-top:6px; white-space:nowrap; }
+  .stack-sub{ font-size:11.5px; color:var(--muted); white-space:nowrap; }
+  .stack-note{ font-size:12.5px; color:var(--muted); margin-top:10px; line-height:1.7; }
+
+  .trend-comment{ font-family: var(--serif); font-size: 16px; line-height: 1.8; color: var(--developed); background: rgba(184,144,60,0.10); border-left: 3px solid var(--safelight); border-radius: 4px; padding: 12px 14px; margin-bottom: 14px; }
+  .stale-nudge{ font-size: 14.5px; line-height: 1.8; color: var(--film); background: var(--dark2); border: 1px solid var(--rim); border-radius: 6px; padding: 14px; margin: 18px 0 12px; }
+
+  .trend-stat-line{
+    font-size: 14.5px;
+    color: var(--film);
+    line-height: 1.9;
+  }
+
   .badge-grid{
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -1283,6 +1380,16 @@
           <span class="nav-card-when">ゆっくり自分と向き合いたい時に</span>
         </span>
       </button>
+
+      <button class="nav-card" id="navCard6" type="button">
+        <span class="nav-icon" aria-hidden="true">
+          <svg viewBox="0 0 48 48"><path d="M8 40 L40 40" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/><rect x="12" y="26" width="6" height="14" fill="none" stroke="currentColor" stroke-width="2.4"/><rect x="21" y="18" width="6" height="22" fill="none" stroke="currentColor" stroke-width="2.4"/><rect x="30" y="10" width="6" height="30" fill="none" stroke="currentColor" stroke-width="2.4"/></svg>
+        </span>
+        <span class="nav-card-body">
+          <span class="nav-card-title">F. 傾向グラフ：どんな考えが多いか、数字で振り返る</span>
+          <span class="nav-card-when">自分のパターンを俯瞰で見たい時に</span>
+        </span>
+      </button>
     </div>
 
     <div class="badge-section">
@@ -1571,6 +1678,32 @@
     <div id="myPageList"></div>
   </div>
 
+  <!-- ===== セクション6: 傾向グラフ ===== -->
+  <div class="section-panel" id="section6">
+    <button class="back-link" type="button" data-back>← 選択画面へ戻る</button>
+    <h2 class="section-title">傾向グラフ</h2>
+    <p class="section-lead">Aで反転した考えの傾向や、Bでの取り組みを、期間ごとに数字で振り返れます。</p>
+    <p class="section-when">こんな時に：自分のパターンを俯瞰で見たい時</p>
+
+    <div class="period-tabs">
+      <button class="period-tab active" data-period="week" type="button">今週</button>
+      <button class="period-tab" data-period="month" type="button">今月</button>
+      <button class="period-tab" data-period="all" type="button">全期間</button>
+    </div>
+
+    <div class="trend-summary" id="trendSummary"></div>
+
+    <div class="trend-chart-block">
+      <div class="history-label">反転回数の推移（A）</div>
+      <div id="trendChart"></div>
+    </div>
+
+    <div class="trend-chart-block">
+      <div class="history-label">意図の再定義（B）の振り返り</div>
+      <div id="trendIntentStats"></div>
+    </div>
+  </div>
+
 </div>
 
 <script>
@@ -1579,7 +1712,7 @@
   // 公開ページを未ログインの訪問者にも使えるようにする場合は、
   // reframe-proxy-README.md の手順でバックエンドを用意し、
   // このURLをそのバックエンドのURLに書き換えてください。
-  const API_ENDPOINT = 'https://reframe-proxy.antonelahiga.workers.dev/';
+  const API_ENDPOINT = 'https://reframe-proxy.antonelahiga.workers.dev';
 
   /* ========== 共通: ホーム画面⇔各セクションの切り替え ========== */
   const homeScreen = document.getElementById('homeScreen');
@@ -1588,7 +1721,8 @@
   const section3 = document.getElementById('section3');
   const section4 = document.getElementById('section4');
   const section5 = document.getElementById('section5');
-  const allSections = [section1, section2, section3, section4, section5];
+  const section6 = document.getElementById('section6');
+  const allSections = [section1, section2, section3, section4, section5, section6];
 
   document.getElementById('navCard1').addEventListener('click', () => setSection(1));
   document.getElementById('navCard2').addEventListener('click', () => setSection(2));
@@ -1597,6 +1731,10 @@
   document.getElementById('navCard5').addEventListener('click', () => {
     renderMyPage();
     setSection(5);
+  });
+  document.getElementById('navCard6').addEventListener('click', () => {
+    renderTrendGraph();
+    setSection(6);
   });
 
   document.querySelectorAll('[data-back]').forEach(btn => {
@@ -1824,6 +1962,258 @@
     setTimeout(() => { levelUpToast.classList.remove('show'); }, 2600);
   }
 
+  /* ---- センサー作動ログ（傾向グラフ用、日付付き） ---- */
+  const SENSOR_LOG_KEY = 'sensor-log-v1';
+  let sensorLog = []; // [{ lawId, at }, ...]
+
+  async function saveSensorLog(){
+    return saveWithRetry(SENSOR_LOG_KEY, JSON.stringify(sensorLog), false);
+  }
+
+  async function loadSensorLog(){
+    const raw = loadLocal(SENSOR_LOG_KEY);
+    if (raw){
+      try { sensorLog = JSON.parse(raw); } catch (e) { sensorLog = []; }
+    } else if (troubleDB && troubleDB.length){
+      // 初回のみ：すでに過去トラDBにある記録から、日付付きログを一度だけ補完する
+      sensorLog = troubleDB
+        .filter(e => e.lawId)
+        .map(e => ({ lawId: e.lawId, at: e.at }));
+      saveSensorLog();
+    }
+  }
+
+  /* ---- 傾向グラフ ---- */
+  let trendPeriod = 'week';
+
+  document.querySelectorAll('.period-tab').forEach(btn => {
+    btn.addEventListener('click', () => {
+      trendPeriod = btn.dataset.period;
+      document.querySelectorAll('.period-tab').forEach(b => b.classList.toggle('active', b === btn));
+      renderTrendGraph();
+    });
+  });
+
+  function getPeriodStart(period){
+    const now = new Date();
+    if (period === 'week'){
+      const day = now.getDay(); // 0=日曜
+      const diffToMonday = (day === 0 ? 6 : day - 1);
+      const monday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - diffToMonday);
+      return monday.getTime();
+    }
+    if (period === 'month'){
+      return new Date(now.getFullYear(), now.getMonth(), 1).getTime();
+    }
+    return 0; // 全期間
+  }
+
+  const LAW_SHADES = { '01': '#EAD9AE', '02': '#D6B467', '03': '#B8903C', '04': '#7A5A18' };
+
+  function buildTrendBuckets(period){
+    const now = new Date();
+    const Y = now.getFullYear(), M = now.getMonth(), D = now.getDate();
+    const out = [];
+    if (period === 'week'){
+      const diff = (now.getDay() === 0 ? 6 : now.getDay() - 1);
+      const names = ['月','火','水','木','金','土','日'];
+      for (let i = 0; i < 7; i++){
+        const d0 = new Date(Y, M, D - diff + i);
+        const d1 = new Date(Y, M, D - diff + i + 1);
+        out.push({ start: d0.getTime(), end: d1.getTime(), label: names[i], sub: (d0.getMonth()+1) + '/' + d0.getDate() });
+      }
+    } else if (period === 'month'){
+      const last = new Date(Y, M + 1, 0).getDate();
+      let cur = 1;
+      while (cur <= last){
+        const dt = new Date(Y, M, cur);
+        const dow = dt.getDay();
+        const daysToSunday = (dow === 0 ? 0 : 7 - dow);
+        const endDay = Math.min(last, cur + daysToSunday);
+        out.push({
+          start: dt.getTime(),
+          end: new Date(Y, M, endDay + 1).getTime(),
+          label: (M+1) + '/' + cur,
+          sub: cur === endDay ? '' : '〜' + endDay
+        });
+        cur = endDay + 1;
+      }
+    } else {
+      let first = now.getTime();
+      sensorLog.forEach(e => { if (e.at < first) first = e.at; });
+      const f = new Date(first);
+      let y = f.getFullYear(), m = f.getMonth();
+      while (y < Y || (y === Y && m <= M)){
+        out.push({
+          start: new Date(y, m, 1).getTime(),
+          end: new Date(y, m + 1, 1).getTime(),
+          label: (m+1) + '月',
+          sub: String(y)
+        });
+        m++; if (m > 11){ m = 0; y++; }
+      }
+    }
+    return out;
+  }
+
+  function bucketize(buckets, entries, keyFn, keys){
+    buckets.forEach(bk => {
+      bk.counts = {}; keys.forEach(k => { bk.counts[k] = 0; }); bk.total = 0;
+    });
+    entries.forEach(e => {
+      const k = keyFn(e);
+      if (!keys.includes(k)) return;
+      for (let i = 0; i < buckets.length; i++){
+        if (e.at >= buckets[i].start && e.at < buckets[i].end){
+          buckets[i].counts[k]++; buckets[i].total++; break;
+        }
+      }
+    });
+    return buckets;
+  }
+
+  function stackChartHtml(buckets, items, showWeekNote){
+    const maxTotal = Math.max(1, ...buckets.map(bk => bk.total));
+    const CHART_H = 150;
+    let html = '<div class="stack-legend">';
+    items.forEach(it => {
+      html += '<span class="stack-legend-item"><i class="stack-swatch" style="background:' + it.color + ';"></i>' + escapeHtml(it.label) + '</span>';
+    });
+    html += '</div><div class="stack-scroll"><div class="stack-chart">';
+    buckets.forEach(bk => {
+      const barH = Math.round((bk.total / maxTotal) * CHART_H);
+      let segs = '';
+      items.forEach(it => {
+        const c = bk.counts[it.id];
+        if (!c) return;
+        segs += '<div class="stack-seg" title="' + escapeHtml(it.label) + '：' + c + '回" style="height:' + ((c / bk.total) * 100) + '%;background:' + it.color + ';"></div>';
+      });
+      html +=
+        '<div class="stack-col">' +
+          '<div class="stack-bar-area" style="height:' + (CHART_H + 22) + 'px;">' +
+            '<div class="stack-total">' + bk.total + '</div>' +
+            '<div class="stack-bar" style="height:' + barH + 'px;">' + segs + '</div>' +
+          '</div>' +
+          '<div class="stack-label">' + escapeHtml(bk.label) + '</div>' +
+          (bk.sub ? '<div class="stack-sub">' + escapeHtml(bk.sub) + '</div>' : '') +
+        '</div>';
+    });
+    html += '</div></div>';
+    if (showWeekNote) html += '<div class="stack-note">週は月曜はじまり。月初・月末は短い週になることがあります。</div>';
+    return html;
+  }
+
+  const INTENT_VALUES = ['愛・感情', '成長', '資産', '貢献'];
+  const VALUE_SHADES = { '愛・感情': '#EAD9AE', '成長': '#D6B467', '資産': '#B8903C', '貢献': '#7A5A18' };
+  const VALUE_PHRASE = {
+    '愛・感情': '大切な人とのつながりを育てたい気持ちが高まっているようです。',
+    '成長': '自分の力を伸ばしたい気持ちが高まっているようです。',
+    '資産': '将来に積み上がるものを作りたい気持ちが高まっているようです。',
+    '貢献': '誰かの役に立ちたい気持ちが高まっているようです。'
+  };
+  const STALE_MS = 3 * 24 * 60 * 60 * 1000;
+  function isStaleIntent(i){ return !i.done && (Date.now() - i.at) > STALE_MS; }
+
+  function getPrevPeriodRange(period, start){
+    if (period === 'week') return { from: start - 7 * 24 * 60 * 60 * 1000, to: start, label: '先週' };
+    if (period === 'month'){
+      const d = new Date(start);
+      return { from: new Date(d.getFullYear(), d.getMonth() - 1, 1).getTime(), to: start, label: '先月' };
+    }
+    return null;
+  }
+
+  function buildIntentInsightHtml(period, start, periodLabel){
+    const cur = {}; const prev = {};
+    INTENT_VALUES.forEach(v => { cur[v] = 0; prev[v] = 0; });
+    const pr = getPrevPeriodRange(period, start);
+    intentLog.forEach(e => {
+      if (cur[e.value] === undefined) return;
+      if (e.at >= start) cur[e.value]++;
+      else if (pr && e.at >= pr.from && e.at < pr.to) prev[e.value]++;
+    });
+    const total = INTENT_VALUES.reduce((n, v) => n + cur[v], 0);
+    if (total === 0) return '';
+    let comment = '';
+    if (pr){
+      let bestV = null, bestDiff = 0;
+      INTENT_VALUES.forEach(v => { const d = cur[v] - prev[v]; if (d > bestDiff){ bestDiff = d; bestV = v; } });
+      if (bestV){
+        comment = periodLabel + 'は「' + bestV + '」を選んだ回数が' + pr.label + 'より' + bestDiff + '回増えました。' + VALUE_PHRASE[bestV];
+      }
+    }
+    if (!comment){
+      let topV = INTENT_VALUES[0];
+      INTENT_VALUES.forEach(v => { if (cur[v] > cur[topV]) topV = v; });
+      comment = (period === 'all' ? 'これまでで' : periodLabel + 'は') + '「' + topV + '」を最も多く選んでいます（' + cur[topV] + '回）。';
+    }
+    return '<div class="trend-comment">' + escapeHtml(comment) + '</div>';
+  }
+
+  function buildDoneRateHtml(entries){
+    let rows = '';
+    INTENT_VALUES.forEach(v => {
+      const list = entries.filter(e => e.value === v);
+      if (list.length === 0) return;
+      const done = list.filter(e => e.done).length;
+      rows += '<div class="trend-stat-line"><span class="stack-swatch" style="background:' + VALUE_SHADES[v] + ';display:inline-block;margin-right:8px;"></span>' + escapeHtml(v) + '：' + done + ' / ' + list.length + '</div>';
+    });
+    return rows ? '<div class="history-label" style="margin-top:20px;">価値ごとの「今日やった」</div>' + rows : '';
+  }
+
+  function openStaleReview(){
+    intentStaleOnly = true;
+    renderIntentLog();
+    setSection(2);
+    intentLogBlock.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  function renderTrendGraph(){
+    const trendSummary = document.getElementById('trendSummary');
+    const trendChart = document.getElementById('trendChart');
+    const trendIntentStats = document.getElementById('trendIntentStats');
+    if (!trendChart) return;
+
+    const start = getPeriodStart(trendPeriod);
+    const periodLabel = trendPeriod === 'week' ? '今週' : (trendPeriod === 'month' ? '今月' : 'これまで');
+
+    const filteredSensor = sensorLog.filter(e => e.at >= start);
+    const counts = { '01': 0, '02': 0, '03': 0, '04': 0 };
+    filteredSensor.forEach(e => { if (counts[e.lawId] !== undefined) counts[e.lawId]++; });
+    const total = filteredSensor.length;
+
+    trendSummary.textContent = periodLabel + '、' + total + '回、思考を反転しました。';
+
+    const buckets = bucketize(buildTrendBuckets(trendPeriod), filteredSensor, e => e.lawId, LAWS.map(l => l.id));
+    const chartHtml = stackChartHtml(buckets, LAWS.map(l => ({ id: l.id, label: l.label, color: LAW_SHADES[l.id] })), trendPeriod === 'month');
+    trendChart.innerHTML = total === 0
+      ? '<div class="db-empty">この期間の記録はまだありません。</div>'
+      : chartHtml;
+
+    const filteredIntents = intentLog.filter(e => e.at >= start);
+    const staleCount = intentLog.filter(isStaleIntent).length;
+    let ih = '';
+    if (filteredIntents.length === 0){
+      ih += '<div class="db-empty">この期間の記録はまだありません。</div>';
+    } else {
+      const doneCount = filteredIntents.filter(e => e.done).length;
+      ih += buildIntentInsightHtml(trendPeriod, start, periodLabel);
+      ih += '<div class="trend-stat-line">意図を書き換えた回数：' + filteredIntents.length + '回</div>';
+      ih += '<div class="trend-stat-line">「今日やった」にチェックした数：' + doneCount + ' / ' + filteredIntents.length + '</div>';
+      const ibuckets = bucketize(buildTrendBuckets(trendPeriod), filteredIntents, e => e.value, INTENT_VALUES);
+      ih += '<div class="history-label" style="margin-top:20px;">選んだ価値の推移</div>';
+      ih += stackChartHtml(ibuckets, INTENT_VALUES.map(v => ({ id: v, label: v, color: VALUE_SHADES[v] })), trendPeriod === 'month');
+      ih += buildDoneRateHtml(filteredIntents);
+    }
+    if (staleCount > 0){
+      ih += '<div class="stale-nudge"><div>まだチェックしていない意図が' + staleCount + '件あります（3日以上前のもの）。今の自分に合っているか、見直してみませんか？もう合わなければ、書き換えや削除をしても大丈夫です。</div>' +
+        '<button class="dev-btn sage-btn" type="button" id="staleReviewBtn" style="margin-top:10px;">未チェックの意図を見直す</button></div>';
+    }
+    trendIntentStats.innerHTML = ih;
+    const sb = document.getElementById('staleReviewBtn');
+    if (sb) sb.addEventListener('click', openStaleReview);
+  }
+
   function registerSensorActivation(lawId){
     if (!lawId || lawId === '00') return;
     const before = levelOf(badgeCounts[lawId] || 0);
@@ -1831,6 +2221,8 @@
     const after = levelOf(badgeCounts[lawId]);
     renderBadges();
     saveBadges();
+    sensorLog.push({ lawId: lawId, at: Date.now() });
+    saveSensorLog();
     if (after > before) showLevelUpToast(BADGE_NAMES[lawId], after);
   }
 
@@ -2223,6 +2615,7 @@
   }
 
   loadDB();
+  loadSensorLog();
 
   /* ========== セクション3: 手動登録フォーム ========== */
   const dbFailureInput = document.getElementById('dbFailureInput');
@@ -2324,6 +2717,7 @@
   let selectedValue = null;
   let isLoading2 = false;
   let intentLog = [];
+  let intentStaleOnly = false;
   let pendingGrief = '';
   let pendingValueAxis = '';
   const STORAGE_KEY = 'intent-log-v1';
@@ -2444,7 +2838,29 @@
     const doneCount = intentLog.filter(i => i.done).length;
     intentCount.textContent = doneCount + ' / ' + intentLog.length + '件 完了';
     intentList.innerHTML = '';
-    intentLog.forEach(item => {
+    const staleCountNow = intentLog.filter(isStaleIntent).length;
+    if (intentStaleOnly && staleCountNow === 0) intentStaleOnly = false;
+    if (intentStaleOnly || staleCountNow > 0){
+      const bar = document.createElement('div');
+      bar.className = 'stale-nudge';
+      const msg = document.createElement('div');
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'dev-btn sage-btn';
+      btn.style.marginTop = '10px';
+      if (intentStaleOnly){
+        msg.textContent = '3日以上前の未チェックの意図だけを表示しています（' + staleCountNow + '件）。今の自分に合わなければ、書き換えや削除をしても大丈夫です。';
+        btn.textContent = 'すべて表示にもどす';
+        btn.addEventListener('click', () => { intentStaleOnly = false; renderIntentLog(); });
+      } else {
+        msg.textContent = 'まだチェックしていない意図が' + staleCountNow + '件あります（3日以上前のもの）。今の自分に合っているか、見直してみませんか？';
+        btn.textContent = '未チェックの意図を見直す';
+        btn.addEventListener('click', () => { intentStaleOnly = true; renderIntentLog(); });
+      }
+      bar.appendChild(msg); bar.appendChild(btn);
+      intentList.appendChild(bar);
+    }
+    (intentStaleOnly ? intentLog.filter(isStaleIntent) : intentLog).forEach(item => {
       const el = document.createElement('div');
       el.className = 'intent-item' + (item.done ? ' done' : '');
 

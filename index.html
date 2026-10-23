@@ -593,6 +593,29 @@
   .trend-comment{ font-family: var(--serif); font-size: 16px; line-height: 1.8; color: var(--developed); background: rgba(184,144,60,0.10); border-left: 3px solid var(--safelight); border-radius: 4px; padding: 12px 14px; margin-bottom: 14px; }
   .stale-nudge{ font-size: 14.5px; line-height: 1.8; color: var(--film); background: var(--dark2); border: 1px solid var(--rim); border-radius: 6px; padding: 14px; margin: 18px 0 12px; }
 
+  .entry-actions{ display:flex; flex-wrap:wrap; gap:6px 22px; margin-top:6px; align-items:center; }
+  .entry-actions .link-btn{ margin-top:8px; font-size:14.5px; }
+  .link-btn.quiet{ color: var(--muted); }
+  .confirm-delete{ width:100%; margin-top:10px; font-size:14.5px; line-height:1.8; background:var(--dark2); border:1px solid var(--rim); border-radius:6px; padding:12px 14px; }
+  .confirm-delete .confirm-btns{ display:flex; gap:10px; margin-top:10px; flex-wrap:wrap; }
+  .confirm-delete button{ position:relative; z-index:1; font-family:var(--sans); font-size:14.5px; border-radius:20px; padding:8px 18px; cursor:pointer; }
+  .confirm-yes{ background:#fff; color:#9A3B2E; border:1px solid #C98A80; }
+  .confirm-no{ background:var(--safelight); color:var(--dark); border:1px solid var(--safelight); }
+  .edit-form{ display:flex; flex-direction:column; gap:12px; margin-top:8px; }
+  .edit-field label{ display:block; font-size:13.5px; color:var(--muted); margin-bottom:4px; }
+  .edit-field textarea, .edit-field input, .edit-field select{
+    width:100%; font-size:15px; background:#fff; border:1px solid var(--rim); border-radius:4px;
+    padding:9px 11px; color:var(--film); font-family:var(--sans); outline:none; box-sizing:border-box;
+  }
+  .edit-field textarea{ min-height:64px; resize:vertical; }
+  .edit-field textarea:focus, .edit-field input:focus, .edit-field select:focus{ border-color:var(--safelight); }
+  .edit-error{ font-size:13.5px; color:#9A3B2E; }
+  .edit-btns{ display:flex; gap:10px; flex-wrap:wrap; }
+  .edit-btns button{ position:relative; z-index:1; font-family:var(--sans); font-size:14.5px; border-radius:20px; padding:8px 20px; cursor:pointer; }
+  .edit-save{ background:var(--safelight); color:var(--dark); border:1px solid var(--safelight); }
+  .edit-cancel{ background:transparent; color:var(--muted); border:1px solid var(--rim); }
+  .edited-mark{ font-size:12.5px; color:var(--muted); margin-top:4px; }
+
   .trend-stat-line{
     font-size: 14.5px;
     color: var(--film);
@@ -2416,6 +2439,8 @@
 
   /* ========== 過去トラDB（共通・セクション1の保存フォームとセクション3の一覧の両方で使用） ========== */
   let troubleDB = [];
+  let dbEditing = null;
+  const dbOpen = new WeakSet();
   const DB_KEY = 'trouble-db-v1';
   const dbList = document.getElementById('dbList');
   const dbFilterFrom = document.getElementById('dbFilterFrom');
@@ -2495,6 +2520,110 @@
     return new Date(timestamp).toLocaleDateString('ja-JP');
   }
 
+
+  /* ---- 共通: 編集フォーム・削除確認 ---- */
+  function formatShortDate(ts){
+    const d = new Date(ts);
+    return (d.getMonth() + 1) + '/' + d.getDate();
+  }
+
+  // fields: [{ key, label, type:'textarea'|'input'|'select', value, options, required }]
+  function buildEditForm(fields, onSave, onCancel){
+    const form = document.createElement('div');
+    form.className = 'edit-form';
+    const inputs = {};
+    fields.forEach(f => {
+      const wrap = document.createElement('div');
+      wrap.className = 'edit-field';
+      const label = document.createElement('label');
+      label.textContent = f.label + ((f.required || f.type === 'select') ? '' : '（任意）');
+      let input;
+      if (f.type === 'select'){
+        input = document.createElement('select');
+        f.options.forEach(o => {
+          const op = document.createElement('option');
+          op.value = o; op.textContent = o;
+          input.appendChild(op);
+        });
+        input.value = f.value;
+      } else if (f.type === 'input'){
+        input = document.createElement('input');
+        input.type = 'text';
+        input.value = f.value || '';
+      } else {
+        input = document.createElement('textarea');
+        input.value = f.value || '';
+      }
+      wrap.appendChild(label);
+      wrap.appendChild(input);
+      form.appendChild(wrap);
+      inputs[f.key] = input;
+    });
+    const err = document.createElement('div');
+    err.className = 'edit-error hidden';
+    form.appendChild(err);
+    const btns = document.createElement('div');
+    btns.className = 'edit-btns';
+    const save = document.createElement('button');
+    save.type = 'button'; save.className = 'edit-save'; save.textContent = '保存する';
+    const cancel = document.createElement('button');
+    cancel.type = 'button'; cancel.className = 'edit-cancel'; cancel.textContent = 'キャンセル';
+    save.addEventListener('click', async () => {
+      const values = {};
+      for (const f of fields){
+        const v = inputs[f.key].value.trim();
+        if (f.required && !v){
+          err.textContent = '「' + f.label + '」は空にできません。';
+          err.classList.remove('hidden');
+          return;
+        }
+        values[f.key] = v;
+      }
+      save.disabled = true;
+      await onSave(values);
+    });
+    cancel.addEventListener('click', onCancel);
+    btns.appendChild(save); btns.appendChild(cancel);
+    form.appendChild(btns);
+    return form;
+  }
+
+  // 「✎ 編集」「🗑 削除」の行。削除は確認を出してから実行する。
+  function buildActionRow(onEdit, confirmMsg, onDelete){
+    const row = document.createElement('div');
+    row.className = 'entry-actions';
+    function showButtons(){
+      row.innerHTML = '';
+      const edit = document.createElement('button');
+      edit.type = 'button'; edit.className = 'link-btn'; edit.textContent = '✎ 編集';
+      edit.addEventListener('click', onEdit);
+      const del = document.createElement('button');
+      del.type = 'button'; del.className = 'link-btn quiet'; del.textContent = '🗑 削除';
+      del.addEventListener('click', showConfirm);
+      row.appendChild(edit); row.appendChild(del);
+    }
+    function showConfirm(){
+      row.innerHTML = '';
+      const box = document.createElement('div');
+      box.className = 'confirm-delete';
+      const msg = document.createElement('div');
+      msg.textContent = confirmMsg;
+      const btns = document.createElement('div');
+      btns.className = 'confirm-btns';
+      const yes = document.createElement('button');
+      yes.type = 'button'; yes.className = 'confirm-yes'; yes.textContent = '削除する';
+      yes.addEventListener('click', async () => { yes.disabled = true; await onDelete(); });
+      const no = document.createElement('button');
+      no.type = 'button'; no.className = 'confirm-no'; no.textContent = 'やめる';
+      no.addEventListener('click', showButtons);
+      btns.appendChild(yes); btns.appendChild(no);
+      box.appendChild(msg); box.appendChild(btns);
+      row.appendChild(box);
+    }
+    showButtons();
+    return row;
+  }
+
   function getFilteredTroubleDB(){
     const fromVal = dbFilterFrom.value ? new Date(dbFilterFrom.value + 'T00:00:00').getTime() : null;
     const toVal = dbFilterTo.value ? new Date(dbFilterTo.value + 'T23:59:59').getTime() : null;
@@ -2526,6 +2655,26 @@
       el.className = 'db-entry';
       const tag = entry.lawLabel ? entry.lawLabel : '手動登録';
 
+      if (dbEditing === entry){
+        el.innerHTML = '<div class="d-tag">' + escapeHtml(tag) + '</div>';
+        el.appendChild(buildEditForm([
+          { key: 'failure', label: '過去の失敗', type: 'textarea', value: entry.failure, required: true },
+          { key: 'pattern', label: '発生パターン', type: 'textarea', value: entry.pattern },
+          { key: 'rule', label: '自分ルール', type: 'textarea', value: entry.rule, required: true },
+          { key: 'nextStep', label: '次の小さな一歩', type: 'textarea', value: entry.nextStep },
+          { key: 'note', label: 'ひとことメモ', type: 'textarea', value: entry.note }
+        ], async (v) => {
+          entry.failure = v.failure; entry.pattern = v.pattern; entry.rule = v.rule;
+          entry.nextStep = v.nextStep; entry.note = v.note;
+          entry.editedAt = Date.now();
+          dbEditing = null;
+          await saveDB();
+          renderDBList();
+        }, () => { dbEditing = null; renderDBList(); }));
+        dbList.appendChild(el);
+        return;
+      }
+
       let html = '<div class="d-tag">' + escapeHtml(tag) + '</div>';
       html += '<div class="d-line"><span class="d-key">過去の失敗：</span>' + escapeHtml(entry.failure) + '</div>';
       if (entry.pattern){
@@ -2537,35 +2686,85 @@
       const detailToggle = document.createElement('button');
       detailToggle.type = 'button';
       detailToggle.className = 'link-btn detail-toggle';
-      detailToggle.textContent = '詳細';
+      const isOpen = dbOpen.has(entry);
+      detailToggle.textContent = isOpen ? '詳細を閉じる' : '詳細';
       el.appendChild(detailToggle);
 
       const detailBlock = document.createElement('div');
-      detailBlock.className = 'db-detail hidden';
+      detailBlock.className = 'db-detail' + (isOpen ? '' : ' hidden');
       el.appendChild(detailBlock);
+
+      let editingMeasure = null;
 
       function renderDetail(){
         let dHtml = '';
-        dHtml += '<div class="d-line"><span class="d-key">登録日：</span>' + escapeHtml(formatJaDate(entry.at)) + '</div>';
+        dHtml += '<div class="d-line"><span class="d-key">登録日：</span>' + escapeHtml(formatJaDate(entry.at)) +
+          (entry.editedAt ? '（編集：' + escapeHtml(formatShortDate(entry.editedAt)) + '）' : '') + '</div>';
         if (entry.nextStep){
           dHtml += '<div class="d-line"><span class="d-key">次の小さな一歩：</span>' + escapeHtml(entry.nextStep) + '</div>';
         }
         if (entry.note){
           dHtml += '<div class="d-line"><span class="d-key">ひとことメモ：</span>' + escapeHtml(entry.note) + '</div>';
         }
-
-        dHtml += '<div class="measures-label">対策</div>';
-        if (entry.measures && entry.measures.length){
-          dHtml += '<div class="measures-list">';
-          entry.measures.forEach(m => {
-            dHtml += '<div class="measure-item"><span class="m-date">' + escapeHtml(formatJaDate(m.at)) + '</span>' + escapeHtml(m.text) + '</div>';
-          });
-          dHtml += '</div>';
-        } else {
-          dHtml += '<div class="measures-empty">まだ対策は追加されていません。</div>';
-        }
-
         detailBlock.innerHTML = dHtml;
+
+        detailBlock.appendChild(buildActionRow(
+          () => { dbEditing = entry; renderDBList(); },
+          'この記録を削除しますか？ 対策もいっしょに消え、元に戻せません。残しておきたい場合は「やめる」を押してください（「Excelに出力する」で書き出しておくこともできます）。',
+          async () => {
+            const idx = troubleDB.indexOf(entry);
+            if (idx >= 0) troubleDB.splice(idx, 1);
+            await saveDB();
+            renderDBList();
+          }
+        ));
+
+        const mLabel = document.createElement('div');
+        mLabel.className = 'measures-label';
+        mLabel.textContent = '対策';
+        detailBlock.appendChild(mLabel);
+
+        if (entry.measures && entry.measures.length){
+          const mList = document.createElement('div');
+          mList.className = 'measures-list';
+          entry.measures.forEach(m => {
+            const item = document.createElement('div');
+            item.className = 'measure-item';
+            if (editingMeasure === m){
+              item.appendChild(buildEditForm([
+                { key: 'text', label: '対策', type: 'textarea', value: m.text, required: true }
+              ], async (v) => {
+                m.text = v.text; m.editedAt = Date.now();
+                editingMeasure = null;
+                await saveDB();
+                renderDetail();
+              }, () => { editingMeasure = null; renderDetail(); }));
+            } else {
+              const d = document.createElement('span');
+              d.className = 'm-date';
+              d.textContent = formatJaDate(m.at) + (m.editedAt ? '（編集：' + formatShortDate(m.editedAt) + '）' : '');
+              item.appendChild(d);
+              item.appendChild(document.createTextNode(m.text));
+              item.appendChild(buildActionRow(
+                () => { editingMeasure = m; renderDetail(); },
+                'この対策を削除しますか？ 元に戻せません。',
+                async () => {
+                  const i = entry.measures.indexOf(m);
+                  if (i >= 0) entry.measures.splice(i, 1);
+                  await saveDB();
+                  renderDetail();
+                }
+              ));
+            }
+            mList.appendChild(item);
+          });
+          detailBlock.appendChild(mList);
+        } else {
+          const empty = document.createElement('div');
+          empty.className = 'measures-empty';
+          empty.textContent = 'まだ対策は追加されていません。';
+          detailBlock.appendChild(empty);
+        }
 
         const addWrap = document.createElement('div');
         addWrap.className = 'measure-add';
@@ -2595,6 +2794,7 @@
       detailToggle.addEventListener('click', () => {
         const opening = detailBlock.classList.contains('hidden');
         detailBlock.classList.toggle('hidden', !opening);
+        if (opening) dbOpen.add(entry); else dbOpen.delete(entry);
         detailToggle.textContent = opening ? '詳細を閉じる' : '詳細';
       });
 
@@ -2718,6 +2918,7 @@
   let isLoading2 = false;
   let intentLog = [];
   let intentStaleOnly = false;
+  let editingIntent = null;
   let pendingGrief = '';
   let pendingValueAxis = '';
   const STORAGE_KEY = 'intent-log-v1';
@@ -2881,18 +3082,45 @@
 
       const body = document.createElement('div');
       body.className = 'intent-body';
-      body.innerHTML =
-        '<div class="i-from">' + escapeHtml(item.from) + '</div>' +
-        '<div class="i-to">' + escapeHtml(item.to) + '</div>' +
-        '<div class="i-tag">' + escapeHtml(item.value) + '</div>' +
-        (item.note ? '<div class="i-note">📝 ' + escapeHtml(item.note) + '</div>' : '');
+      if (editingIntent === item){
+        body.appendChild(buildEditForm([
+          { key: 'to', label: '意図の文章', type: 'textarea', value: item.to, required: true },
+          { key: 'value', label: '選んだ価値', type: 'select', value: INTENT_VALUES.includes(item.value) ? item.value : INTENT_VALUES[0], options: INTENT_VALUES },
+          { key: 'from', label: 'もとの気持ち（愚痴）', type: 'textarea', value: item.from },
+          { key: 'note', label: 'ひとことメモ', type: 'textarea', value: item.note }
+        ], async (v) => {
+          item.to = v.to; item.value = v.value; item.from = v.from; item.note = v.note;
+          item.editedAt = Date.now();
+          editingIntent = null;
+          await saveIntentLog();
+          renderIntentLog();
+        }, () => { editingIntent = null; renderIntentLog(); }));
+      } else {
+        body.innerHTML =
+          '<div class="i-from">' + escapeHtml(item.from) + '</div>' +
+          '<div class="i-to">' + escapeHtml(item.to) + '</div>' +
+          '<div class="i-tag">' + escapeHtml(item.value) + '</div>' +
+          (item.note ? '<div class="i-note">📝 ' + escapeHtml(item.note) + '</div>' : '') +
+          (item.editedAt ? '<div class="edited-mark">編集：' + escapeHtml(formatShortDate(item.editedAt)) + '</div>' : '');
 
-      const cardBtn = document.createElement('button');
-      cardBtn.type = 'button';
-      cardBtn.className = 'link-btn card-btn';
-      cardBtn.textContent = '🎴 自分への一言にする';
-      cardBtn.addEventListener('click', () => generateMottoCard(item));
-      body.appendChild(cardBtn);
+        const cardBtn = document.createElement('button');
+        cardBtn.type = 'button';
+        cardBtn.className = 'link-btn card-btn';
+        cardBtn.textContent = '🎴 自分への一言にする';
+        cardBtn.addEventListener('click', () => generateMottoCard(item));
+        body.appendChild(cardBtn);
+
+        body.appendChild(buildActionRow(
+          () => { editingIntent = item; renderIntentLog(); },
+          'この意図を削除しますか？ 元に戻せません。残しておきたい場合は「やめる」を押してください。',
+          async () => {
+            const idx = intentLog.indexOf(item);
+            if (idx >= 0) intentLog.splice(idx, 1);
+            await saveIntentLog();
+            renderIntentLog();
+          }
+        ));
+      }
 
       el.appendChild(checkLabel);
       checkLabel.appendChild(checkbox);
@@ -3540,9 +3768,20 @@
 // PWA化：サービスワーカーを登録（対応環境・HTTPS配信時のみ有効）
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('sw.js').catch((e) => {
-      console.error('サービスワーカーの登録に失敗しました', e);
-    });
+    navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' })
+      .then((reg) => { reg.update(); })
+      .catch((e) => {
+        console.error('サービスワーカーの登録に失敗しました', e);
+      });
+  });
+  // 新しいバージョンに切り替わったら、一度だけ自動で読み込み直す
+  let hadController = !!navigator.serviceWorker.controller;
+  let reloaded = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (!hadController){ hadController = true; return; }
+    if (reloaded) return;
+    reloaded = true;
+    location.reload();
   });
 }
 </script>

@@ -2,7 +2,7 @@
 // アプリの外枠（index.html・アイコン）をキャッシュし、オフラインでも開けるようにする。
 // Claude呼び出しなど通信が必要な機能は、オフライン時は動作しません。
 
-const CACHE_NAME = 'reframe-taller-es-v3';
+const CACHE_NAME = 'reframe-taller-es-v4';
 const APP_SHELL = [
   './',
   './index.html',

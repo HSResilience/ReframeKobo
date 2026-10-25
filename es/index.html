@@ -13,7 +13,7 @@
 <meta name="apple-mobile-web-app-title" content="Taller de Reencuadre">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@400;500;600&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Montserrat:wght@400;500;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
   :root{
@@ -27,8 +27,8 @@
     --dark: #1A1512;
     --developed: #8A6A22;
     --sage: #D9BE86;
-    --serif: "Shippori Mincho", serif;
-    --sans: "Zen Kaku Gothic New", sans-serif;
+    --serif: "Playfair Display", Georgia, serif;
+    --sans: "Montserrat", "Helvetica Neue", Arial, sans-serif;
   }
 
   *{ box-sizing: border-box; }
@@ -3232,10 +3232,10 @@
 
   async function generateMottoCard(item){
     try {
-      await document.fonts.load('italic 500 50px "Shippori Mincho"');
-      await document.fonts.load('italic 400 22px "Shippori Mincho"');
-      await document.fonts.load('500 30px "Zen Kaku Gothic New"');
-      await document.fonts.load('400 20px "Zen Kaku Gothic New"');
+      await document.fonts.load('italic 500 50px "Playfair Display"');
+      await document.fonts.load('italic 400 22px "Playfair Display"');
+      await document.fonts.load('500 30px "Montserrat"');
+      await document.fonts.load('400 20px "Montserrat"');
     } catch (e) {
       // フォント読み込みに失敗しても、標準フォントで描画を続行する
     }
@@ -3266,15 +3266,15 @@
     const maxTextWidth = W - 220;
 
     // 各パーツの行を先に計算し、全体を縦方向中央に配置する
-    const mainFont = 'italic 500 50px "Shippori Mincho", serif';
+    const mainFont = 'italic 500 50px "Playfair Display", Georgia, serif';
     ctx.font = mainFont;
     const mainLines = getWrappedLines(ctx, item.to, maxTextWidth);
     const mainLineHeight = 70;
 
-    const tagFont = '500 30px "Zen Kaku Gothic New", sans-serif';
+    const tagFont = '500 30px "Montserrat", "Helvetica Neue", Arial, sans-serif';
 
     let noteLines = [];
-    const noteFont = 'italic 400 27px "Shippori Mincho", serif';
+    const noteFont = 'italic 400 27px "Playfair Display", Georgia, serif';
     if (item.note){
       ctx.font = noteFont;
       noteLines = getWrappedLines(ctx, '“' + item.note + '”', maxTextWidth);
@@ -3322,7 +3322,7 @@
 
     // 隅：署名・日付
     const dateStr = new Date(item.at || Date.now()).toLocaleDateString('es-MX');
-    ctx.font = '400 18px "Zen Kaku Gothic New", sans-serif';
+    ctx.font = '400 18px "Montserrat", "Helvetica Neue", Arial, sans-serif';
     ctx.fillStyle = '#A8A29A';
     ctx.textAlign = 'right';
     ctx.fillText('Taller de Reencuadre / ' + dateStr, W - 60, H - 56);

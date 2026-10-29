@@ -2146,30 +2146,57 @@
     return null;
   }
 
+  const INSIGHT_MIN = 3;          // 傾向を言うために必要な最低件数
+  const INSIGHT_MIN_INCREASE = 2; // 「増えた」と言うために必要な増加数
+
+  function joinValueNames(names){
+    return names.length === 2 ? '「' + names[0] + '」と「' + names[1] + '」' : names.map(n => '「' + n + '」').join('');
+  }
+
   function buildIntentInsightHtml(period, start, periodLabel){
     const cur = {}; const prev = {};
     INTENT_VALUES.forEach(v => { cur[v] = 0; prev[v] = 0; });
     const pr = getPrevPeriodRange(period, start);
+    let firstAt = Infinity;
     intentLog.forEach(e => {
+      if (e.at < firstAt) firstAt = e.at;
       if (cur[e.value] === undefined) return;
       if (e.at >= start) cur[e.value]++;
       else if (pr && e.at >= pr.from && e.at < pr.to) prev[e.value]++;
     });
     const total = INTENT_VALUES.reduce((n, v) => n + cur[v], 0);
+    const prevTotal = INTENT_VALUES.reduce((n, v) => n + prev[v], 0);
     if (total === 0) return '';
+
+    // 記録がまだ少ない間は、傾向を言わずに励ます
+    if (total < INSIGHT_MIN){
+      return '<div class="trend-comment">まだ記録が少ないので、傾向はこれから見えてきます。続けるほど、あなたの選ぶ価値のパターンがはっきりしてきます。</div>';
+    }
+
     let comment = '';
-    if (pr){
-      let bestV = null, bestDiff = 0;
-      INTENT_VALUES.forEach(v => { const d = cur[v] - prev[v]; if (d > bestDiff){ bestDiff = d; bestV = v; } });
-      if (bestV){
-        comment = periodLabel + 'は「' + bestV + '」を選んだ回数が' + pr.label + 'より' + bestDiff + '回増えました。' + VALUE_PHRASE[bestV];
+    // 前の期間がまるごと記録の対象で、記録も十分あるときだけ比べる
+    if (pr && firstAt <= pr.from && prevTotal >= INSIGHT_MIN){
+      let maxDiff = 0;
+      INTENT_VALUES.forEach(v => { const d = cur[v] - prev[v]; if (d > maxDiff) maxDiff = d; });
+      if (maxDiff >= INSIGHT_MIN_INCREASE){
+        const ups = INTENT_VALUES.filter(v => cur[v] - prev[v] === maxDiff);
+        comment = periodLabel + 'は' + joinValueNames(ups) + 'を選んだ回数が' + pr.label + 'より' + maxDiff + (ups.length > 1 ? '回ずつ' : '回') + '増えています。';
       }
     }
     if (!comment){
-      let topV = INTENT_VALUES[0];
-      INTENT_VALUES.forEach(v => { if (cur[v] > cur[topV]) topV = v; });
-      comment = (period === 'all' ? 'これまでで' : periodLabel + 'は') + '「' + topV + '」を最も多く選んでいます（' + cur[topV] + '回）。';
+      let max = 0;
+      INTENT_VALUES.forEach(v => { if (cur[v] > max) max = cur[v]; });
+      const tops = INTENT_VALUES.filter(v => cur[v] === max);
+      const lead = (period === 'all' ? 'これまでで' : periodLabel + 'は');
+      if (tops.length === INTENT_VALUES.length){
+        comment = lead + '4つの価値が同じ回数で並んでいます。バランスよく選んでいます。';
+      } else if (tops.length === 1){
+        comment = lead + '「' + tops[0] + '」を最も多く選んでいます（' + max + '回）。';
+      } else {
+        comment = lead + joinValueNames(tops) + 'が同じ回数（' + max + '回ずつ）で並んでいます。';
+      }
     }
+    if (total < INSIGHT_MIN * 2) comment += ' まだ記録が少ないので、参考程度にご覧ください。';
     return '<div class="trend-comment">' + escapeHtml(comment) + '</div>';
   }
 

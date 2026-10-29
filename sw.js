@@ -5,6 +5,7 @@
 // アプリを更新したら、下の CACHE_VERSION の数字を1つ上げると、古いキャッシュが自動で消えます。
 
 const CACHE_VERSION = 'v3';
+// ※ 同じサイトにスペイン語版（reframe-taller-es-）もあるため、消すのは日本語版の古いキャッシュ（reframe-koubou-）だけにしている。
 const CACHE_NAME = 'reframe-koubou-' + CACHE_VERSION;
 const APP_SHELL = [
   './',
@@ -25,7 +26,7 @@ self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((keys) =>
       Promise.all(
-        keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key))
+        keys.filter((key) => key.startsWith('reframe-koubou-') && key !== CACHE_NAME).map((key) => caches.delete(key))
       )
     ).then(() => self.clients.claim())
   );

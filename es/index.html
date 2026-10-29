@@ -2149,30 +2149,59 @@
     return null;
   }
 
+  const INSIGHT_MIN = 3;          // 傾向を言うために必要な最低件数
+  const INSIGHT_MIN_INCREASE = 2; // 「増えた」と言うために必要な増加数
+
+  // ['A'] → «A» / ['A','B'] → «A» y «B» / ['A','B','C'] → «A», «B» y «C»
+  function joinValueNames(names){
+    const q = names.map(n => '«' + n + '»');
+    return q.length <= 1 ? q.join('') : q.slice(0, -1).join(', ') + ' y ' + q[q.length - 1];
+  }
+
   function buildIntentInsightHtml(period, start, periodLabel){
     const cur = {}; const prev = {};
     INTENT_VALUES.forEach(v => { cur[v] = 0; prev[v] = 0; });
     const pr = getPrevPeriodRange(period, start);
+    let firstAt = Infinity;
     intentLog.forEach(e => {
+      if (e.at < firstAt) firstAt = e.at;
       if (cur[e.value] === undefined) return;
       if (e.at >= start) cur[e.value]++;
       else if (pr && e.at >= pr.from && e.at < pr.to) prev[e.value]++;
     });
     const total = INTENT_VALUES.reduce((n, v) => n + cur[v], 0);
+    const prevTotal = INTENT_VALUES.reduce((n, v) => n + prev[v], 0);
     if (total === 0) return '';
+
+    // 記録がまだ少ない間は、傾向を言わずに励ます
+    if (total < INSIGHT_MIN){
+      return '<div class="trend-comment">Todavía hay pocos registros; las tendencias irán apareciendo con el tiempo. Mientras más sigas, más claro se verá el patrón de los valores que eliges.</div>';
+    }
+
     let comment = '';
-    if (pr){
-      let bestV = null, bestDiff = 0;
-      INTENT_VALUES.forEach(v => { const d = cur[v] - prev[v]; if (d > bestDiff){ bestDiff = d; bestV = v; } });
-      if (bestV){
-        comment = periodLabel + ' elegiste «' + bestV + '» ' + vecesEs(bestDiff) + ' más que ' + pr.label + '. ' + VALUE_PHRASE[bestV];
+    // 前の期間がまるごと記録の対象で、記録も十分あるときだけ比べる
+    if (pr && firstAt <= pr.from && prevTotal >= INSIGHT_MIN){
+      let maxDiff = 0;
+      INTENT_VALUES.forEach(v => { const d = cur[v] - prev[v]; if (d > maxDiff) maxDiff = d; });
+      if (maxDiff >= INSIGHT_MIN_INCREASE){
+        const ups = INTENT_VALUES.filter(v => cur[v] - prev[v] === maxDiff);
+        comment = periodLabel + ' elegiste ' + joinValueNames(ups) + ' ' + vecesEs(maxDiff) + (ups.length > 1 ? ' más cada uno' : ' más') + ' que ' + pr.label + '.';
       }
     }
     if (!comment){
-      let topV = INTENT_VALUES[0];
-      INTENT_VALUES.forEach(v => { if (cur[v] > cur[topV]) topV = v; });
-      comment = periodLabel + ', el valor que más elegiste es «' + topV + '» (' + vecesEs(cur[topV]) + ').';
+      let max = 0;
+      INTENT_VALUES.forEach(v => { if (cur[v] > max) max = cur[v]; });
+      const tops = INTENT_VALUES.filter(v => cur[v] === max);
+      const lead = periodLabel + ', ';
+      if (tops.length === INTENT_VALUES.length){
+        comment = lead + 'los 4 valores están empatados. Estás eligiendo con equilibrio.';
+      } else if (tops.length === 1){
+        comment = lead + 'el valor que más elegiste es «' + tops[0] + '» (' + vecesEs(max) + ').';
+      } else {
+        comment = lead + joinValueNames(tops) + ' están empatados (' + vecesEs(max) + ' cada uno).';
+      }
     }
+    if (total < INSIGHT_MIN * 2) comment += ' Como todavía hay pocos registros, tómalo solo como referencia.';
     return '<div class="trend-comment">' + escapeHtml(comment) + '</div>';
   }
 

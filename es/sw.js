@@ -1,8 +1,12 @@
 // リフレーム工房 スペイン語版（Taller de Reencuadre）用サービスワーカー
-// アプリの外枠（index.html・アイコン）をキャッシュし、オフラインでも開けるようにする。
-// Claude呼び出しなど通信が必要な機能は、オフライン時は動作しません。
+// 方針: HTML（index.html / manual.html）は「ネットワーク優先」にして、更新がすぐ反映されるようにする。
+// 圏外・オフラインのときだけ、保存しておいたコピーで開く。
+// アイコンなどの画像・設定ファイルは「キャッシュ優先＋裏で更新」。
+// アプリを更新したら、下の CACHE_VERSION の数字を1つ上げると、古いキャッシュが自動で消えます。
 
-const CACHE_NAME = 'reframe-taller-es-v4';
+const CACHE_VERSION = 'v5';
+const CACHE_PREFIX = 'reframe-taller-es-';
+const CACHE_NAME = CACHE_PREFIX + CACHE_VERSION;
 const APP_SHELL = [
   './',
   './index.html',
@@ -23,39 +27,50 @@ self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((keys) =>
       Promise.all(
-        keys
-          .filter((key) => key.startsWith('reframe-taller-es-') && key !== CACHE_NAME) // 日本語版のキャッシュは消さない
-          .map((key) => caches.delete(key))
+        keys.filter((key) => key.startsWith(CACHE_PREFIX) && key !== CACHE_NAME) // 日本語版のキャッシュは消さない.map((key) => caches.delete(key))
       )
-    )
+    ).then(() => self.clients.claim())
   );
-  self.clients.claim();
 });
 
-// 基本方針: キャッシュ優先、キャッシュに無ければネットワークから取得し、
-// 同時にキャッシュへ保存しておく（次回以降オフラインでも開けるように）。
-// Anthropic APIなど外部通信はそのままネットワークへ素通しする。
 self.addEventListener('fetch', (event) => {
-  const url = new URL(event.request.url);
+  const req = event.request;
+  const url = new URL(req.url);
 
-  // 同一オリジンのGETリクエストだけをキャッシュ対象にする
-  if (event.request.method !== 'GET' || url.origin !== self.location.origin) {
-    return;
-  }
+  // 同一オリジンのGETだけ扱う（Claude APIなど外部通信は素通し）
+  if (req.method !== 'GET' || url.origin !== self.location.origin) return;
 
-  event.respondWith(
-    caches.match(event.request).then((cached) => {
-      if (cached) return cached;
+  const isHtml = req.mode === 'navigate' ||
+    (req.headers.get('accept') || '').includes('text/html') ||
+    url.pathname.endsWith('.html') || url.pathname.endsWith('/');
 
-      return fetch(event.request)
+  if (isHtml){
+    // ネットワーク優先（ブラウザのHTTPキャッシュも使わず最新を取得）
+    event.respondWith(
+      fetch(req, { cache: 'no-store' })
         .then((response) => {
-          if (response && response.status === 200) {
+          if (response && response.status === 200){
             const clone = response.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+            caches.open(CACHE_NAME).then((cache) => cache.put(req, clone));
           }
           return response;
         })
-        .catch(() => cached);
+        .catch(() => caches.match(req).then((c) => c || caches.match('./index.html')))
+    );
+    return;
+  }
+
+  // それ以外: キャッシュ優先＋裏で更新
+  event.respondWith(
+    caches.match(req).then((cached) => {
+      const network = fetch(req).then((response) => {
+        if (response && response.status === 200){
+          const clone = response.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(req, clone));
+        }
+        return response;
+      }).catch(() => cached);
+      return cached || network;
     })
   );
 });

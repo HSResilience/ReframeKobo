@@ -517,9 +517,10 @@
     background: transparent;
     border: 1px solid var(--rim);
     border-radius: 20px;
-    padding: 8px 10px;
+    padding: 8px 4px;
     cursor: pointer;
     text-align: center;
+    white-space: nowrap;
   }
 
   .period-tab.active{
@@ -616,6 +617,11 @@
   .edit-cancel{ background:transparent; color:var(--muted); border:1px solid var(--rim); }
   .edited-mark{ font-size:12.5px; color:var(--muted); margin-top:4px; }
 
+  .trend-comment-sub{ font-size: 14.5px; line-height: 1.8; color: var(--developed); margin-bottom: 4px; }
+  .trend-streak{ font-size: 14.5px; line-height: 1.8; color: var(--developed); margin: -14px 0 24px; }
+  .trend-streak div{ margin-bottom: 2px; }
+  .when-label{ font-size: 13.5px; color: var(--muted); margin: 14px 0 6px; }
+  .trend-when-note{ font-size: 14.5px; line-height: 1.8; color: var(--film); margin-bottom: 4px; }
   .trend-stat-line{
     font-size: 14.5px;
     color: var(--film);
@@ -1709,16 +1715,23 @@
     <p class="section-when">こんな時に：自分のパターンを俯瞰で見たい時</p>
 
     <div class="period-tabs">
-      <button class="period-tab active" data-period="week" type="button">今週</button>
-      <button class="period-tab" data-period="month" type="button">今月</button>
+      <button class="period-tab active" data-period="d7" type="button">7日間</button>
+      <button class="period-tab" data-period="w4" type="button">4週間</button>
+      <button class="period-tab" data-period="m12" type="button">12か月</button>
       <button class="period-tab" data-period="all" type="button">全期間</button>
     </div>
 
     <div class="trend-summary" id="trendSummary"></div>
+    <div class="trend-streak" id="trendStreak"></div>
 
     <div class="trend-chart-block">
       <div class="history-label">反転回数の推移（A）</div>
       <div id="trendChart"></div>
+    </div>
+
+    <div class="trend-chart-block">
+      <div class="history-label">センサーが働きやすい曜日・時間帯（A）</div>
+      <div id="trendWhen"></div>
     </div>
 
     <div class="trend-chart-block">
@@ -2007,7 +2020,7 @@
   }
 
   /* ---- 傾向グラフ ---- */
-  let trendPeriod = 'week';
+  let trendPeriod = 'd7';
 
   document.querySelectorAll('.period-tab').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -2017,17 +2030,15 @@
     });
   });
 
+  const PERIOD_LABEL = { d7: '過去7日間', w4: '過去4週間', m12: '過去12か月', all: 'これまで' };
+
+  // 期間の始まり（「いま」から数えてさかのぼる）
   function getPeriodStart(period){
     const now = new Date();
-    if (period === 'week'){
-      const day = now.getDay(); // 0=日曜
-      const diffToMonday = (day === 0 ? 6 : day - 1);
-      const monday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - diffToMonday);
-      return monday.getTime();
-    }
-    if (period === 'month'){
-      return new Date(now.getFullYear(), now.getMonth(), 1).getTime();
-    }
+    const Y = now.getFullYear(), M = now.getMonth(), D = now.getDate();
+    if (period === 'd7') return new Date(Y, M, D - 6).getTime();
+    if (period === 'w4') return new Date(Y, M, D - 27).getTime();
+    if (period === 'm12') return new Date(Y, M - 11, 1).getTime();
     return 0; // 全期間
   }
 
@@ -2037,33 +2048,41 @@
     const now = new Date();
     const Y = now.getFullYear(), M = now.getMonth(), D = now.getDate();
     const out = [];
-    if (period === 'week'){
-      const diff = (now.getDay() === 0 ? 6 : now.getDay() - 1);
-      const names = ['月','火','水','木','金','土','日'];
-      for (let i = 0; i < 7; i++){
-        const d0 = new Date(Y, M, D - diff + i);
-        const d1 = new Date(Y, M, D - diff + i + 1);
-        out.push({ start: d0.getTime(), end: d1.getTime(), label: names[i], sub: (d0.getMonth()+1) + '/' + d0.getDate() });
-      }
-    } else if (period === 'month'){
-      const last = new Date(Y, M + 1, 0).getDate();
-      let cur = 1;
-      while (cur <= last){
-        const dt = new Date(Y, M, cur);
-        const dow = dt.getDay();
-        const daysToSunday = (dow === 0 ? 0 : 7 - dow);
-        const endDay = Math.min(last, cur + daysToSunday);
+    const dayNames = ['日','月','火','水','木','金','土'];
+    if (period === 'd7'){
+      for (let i = 6; i >= 0; i--){
+        const d0 = new Date(Y, M, D - i);
+        const d1 = new Date(Y, M, D - i + 1);
         out.push({
-          start: dt.getTime(),
-          end: new Date(Y, M, endDay + 1).getTime(),
-          label: (M+1) + '/' + cur,
-          sub: cur === endDay ? '' : '〜' + endDay
+          start: d0.getTime(), end: d1.getTime(),
+          label: i === 0 ? '今日' : (i === 1 ? '昨日' : dayNames[d0.getDay()]),
+          sub: (d0.getMonth()+1) + '/' + d0.getDate()
         });
-        cur = endDay + 1;
+      }
+    } else if (period === 'w4'){
+      for (let k = 3; k >= 0; k--){
+        const d0 = new Date(Y, M, D - (7 * k + 6));
+        const d1 = new Date(Y, M, D - 7 * k + 1);
+        const dEnd = new Date(Y, M, D - 7 * k);
+        out.push({
+          start: d0.getTime(), end: d1.getTime(),
+          label: (d0.getMonth()+1) + '/' + d0.getDate(),
+          sub: '〜' + (dEnd.getMonth()+1) + '/' + dEnd.getDate()
+        });
+      }
+    } else if (period === 'm12'){
+      for (let k = 11; k >= 0; k--){
+        const d0 = new Date(Y, M - k, 1);
+        out.push({
+          start: d0.getTime(), end: new Date(Y, M - k + 1, 1).getTime(),
+          label: (d0.getMonth()+1) + '月',
+          sub: String(d0.getFullYear())
+        });
       }
     } else {
       let first = now.getTime();
       sensorLog.forEach(e => { if (e.at < first) first = e.at; });
+      intentLog.forEach(e => { if (e.at < first) first = e.at; });
       const f = new Date(first);
       let y = f.getFullYear(), m = f.getMonth();
       while (y < Y || (y === Y && m <= M)){
@@ -2095,7 +2114,7 @@
     return buckets;
   }
 
-  function stackChartHtml(buckets, items, showWeekNote){
+  function stackChartHtml(buckets, items, period){
     const maxTotal = Math.max(1, ...buckets.map(bk => bk.total));
     const CHART_H = 150;
     let html = '<div class="stack-legend">';
@@ -2122,7 +2141,8 @@
         '</div>';
     });
     html += '</div></div>';
-    if (showWeekNote) html += '<div class="stack-note">週は月曜はじまり。月初・月末は短い週になることがあります。</div>';
+    const notes = { d7: '右端が今日です。', w4: '7日ごとの区切りです。右端が、今日までの直近7日間です。', m12: '右端が今月です（今月は途中までの集計です）。', all: '右端が今月です（今月は途中までの集計です）。' };
+    if (notes[period]) html += '<div class="stack-note">' + notes[period] + '</div>';
     return html;
   }
 
@@ -2138,11 +2158,11 @@
   function isStaleIntent(i){ return !i.done && (Date.now() - i.at) > STALE_MS; }
 
   function getPrevPeriodRange(period, start){
-    if (period === 'week') return { from: start - 7 * 24 * 60 * 60 * 1000, to: start, label: '先週' };
-    if (period === 'month'){
-      const d = new Date(start);
-      return { from: new Date(d.getFullYear(), d.getMonth() - 1, 1).getTime(), to: start, label: '先月' };
-    }
+    const d = new Date(start);
+    const Y = d.getFullYear(), M = d.getMonth(), D = d.getDate();
+    if (period === 'd7') return { from: new Date(Y, M, D - 7).getTime(), to: start, label: '直前の7日間' };
+    if (period === 'w4') return { from: new Date(Y, M, D - 28).getTime(), to: start, label: '直前の4週間' };
+    if (period === 'm12') return { from: new Date(Y, M - 12, 1).getTime(), to: start, label: '前の12か月' };
     return null;
   }
 
@@ -2218,6 +2238,111 @@
     intentLogBlock.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
+  // 反転した（記録のある）日の集計
+  function dayKey(ts){ const d = new Date(ts); return d.getFullYear() + '-' + d.getMonth() + '-' + d.getDate(); }
+
+  function countActiveDays(entries, start){
+    const set = new Set();
+    entries.forEach(e => { if (e.at >= start) set.add(dayKey(e.at)); });
+    return set.size;
+  }
+
+  function periodDayCount(period){
+    if (period === 'd7') return 7;
+    if (period === 'w4') return 28;
+    return 0; // 12か月・全期間は「N日」とだけ表示する
+  }
+
+  function activeDaysText(verb, entries, start, period){
+    const n = countActiveDays(entries, start);
+    if (n === 0) return '';
+    const total = periodDayCount(period);
+    if (total) return PERIOD_LABEL[period] + 'のうち、' + n + '日、' + verb + 'ました。';
+    return PERIOD_LABEL[period] + (period === 'all' ? 'に' : 'で') + '、' + n + '日、' + verb + 'ました。';
+  }
+
+  // 今日（または昨日）までの連続日数
+  function currentStreak(entries){
+    const set = new Set(entries.map(e => dayKey(e.at)));
+    const now = new Date();
+    const Y = now.getFullYear(), M = now.getMonth(), D = now.getDate();
+    let offset = 0, endsToday = true;
+    if (!set.has(dayKey(new Date(Y, M, D).getTime()))){ offset = 1; endsToday = false; }
+    let n = 0;
+    while (set.has(dayKey(new Date(Y, M, D - offset - n).getTime()))) n++;
+    return { days: n, endsToday: endsToday };
+  }
+
+  function streakText(entries){
+    const st = currentStreak(entries);
+    if (st.days < 2) return '';
+    return (st.endsToday ? '今日まで' : '昨日まで') + st.days + '日連続で続いています。';
+  }
+
+  // 曜日・時間帯の傾向
+  const TIME_BANDS = [
+    { id: 'morning', label: '朝', sub: '5〜11時', test: h => h >= 5 && h < 11 },
+    { id: 'noon', label: '昼', sub: '11〜17時', test: h => h >= 11 && h < 17 },
+    { id: 'evening', label: '夜', sub: '17〜22時', test: h => h >= 17 && h < 22 },
+    { id: 'late', label: '深夜', sub: '22〜5時', test: h => h >= 22 || h < 5 }
+  ];
+  const WHEN_MIN = 5;
+
+  function miniBarsHtml(list){
+    const max = Math.max(1, ...list.map(it => it.count));
+    const top = Math.max(...list.map(it => it.count));
+    const H = 90;
+    let html = '<div class="stack-scroll"><div class="stack-chart">';
+    list.forEach(it => {
+      const h = Math.round((it.count / max) * H);
+      const color = (it.count === top && top > 0) ? '#7A5A18' : '#D6B467';
+      html += '<div class="stack-col">' +
+        '<div class="stack-bar-area" style="height:' + (H + 22) + 'px;">' +
+          '<div class="stack-total">' + it.count + '</div>' +
+          '<div class="stack-bar" style="height:' + h + 'px;"><div class="stack-seg" style="height:100%;background:' + color + ';"></div></div>' +
+        '</div>' +
+        '<div class="stack-label">' + escapeHtml(it.label) + '</div>' +
+        (it.sub ? '<div class="stack-sub">' + escapeHtml(it.sub) + '</div>' : '') +
+      '</div>';
+    });
+    return html + '</div></div>';
+  }
+
+  function topLabels(list){
+    const top = Math.max(...list.map(it => it.count));
+    return { top: top, names: list.filter(it => it.count === top).map(it => it.label) };
+  }
+
+  function buildWhenHtml(entries){
+    if (entries.length < WHEN_MIN){
+      return '<div class="db-empty">記録が' + WHEN_MIN + '件たまると、センサーが働きやすい曜日や時間帯が見えてきます。続けるほど、あなたのパターンがはっきりします。</div>';
+    }
+    const dayNames = ['日','月','火','水','木','金','土'];
+    const byDay = dayNames.map(n => ({ label: n, count: 0 }));
+    const byBand = TIME_BANDS.map(b => ({ label: b.label, sub: b.sub, count: 0 }));
+    entries.forEach(e => {
+      const d = new Date(e.at);
+      byDay[d.getDay()].count++;
+      const h = d.getHours();
+      const bi = TIME_BANDS.findIndex(b => b.test(h));
+      if (bi >= 0) byBand[bi].count++;
+    });
+    // 月曜はじまりの並びにする
+    const dayList = byDay.slice(1).concat(byDay.slice(0, 1));
+    const td = topLabels(dayList), tb = topLabels(byBand);
+    const join = (names, suffix) => names.length === dayList.length ? null : names.map(n => '「' + n + suffix + '」').join('と');
+    const dayPart = join(td.names, '曜日');
+    const bandPart = join(tb.names, '');
+    let note = '';
+    if (bandPart) note += 'センサーは' + bandPart + 'に、いちばん多く働いています（' + tb.top + '回' + (tb.names.length > 1 ? 'ずつ' : '') + '）。';
+    if (dayPart) note += (note ? '' : 'センサーは') + (note ? '曜日では、' : '') + dayPart + 'に多めです（' + td.top + '回' + (td.names.length > 1 ? 'ずつ' : '') + '）。';
+    if (!note) note = '曜日や時間帯による大きな偏りは、まだ見られません。';
+    if (entries.length < WHEN_MIN * 2) note += ' まだ記録が少ないので、参考程度にご覧ください。';
+    return '<div class="trend-when-note">' + escapeHtml(note) + '</div>' +
+      '<div class="when-label">曜日別</div>' + miniBarsHtml(dayList) +
+      '<div class="when-label">時間帯別</div>' + miniBarsHtml(byBand);
+  }
+
   function renderTrendGraph(){
     const trendSummary = document.getElementById('trendSummary');
     const trendChart = document.getElementById('trendChart');
@@ -2225,17 +2350,25 @@
     if (!trendChart) return;
 
     const start = getPeriodStart(trendPeriod);
-    const periodLabel = trendPeriod === 'week' ? '今週' : (trendPeriod === 'month' ? '今月' : 'これまで');
+    const periodLabel = PERIOD_LABEL[trendPeriod];
 
     const filteredSensor = sensorLog.filter(e => e.at >= start);
     const counts = { '01': 0, '02': 0, '03': 0, '04': 0 };
     filteredSensor.forEach(e => { if (counts[e.lawId] !== undefined) counts[e.lawId]++; });
     const total = filteredSensor.length;
 
-    trendSummary.textContent = periodLabel + '、' + total + '回、思考を反転しました。';
+    trendSummary.textContent = periodLabel + (trendPeriod === 'all' ? 'に、' : 'で、') + total + '回、思考を反転しました。';
+
+    const streakEl = document.getElementById('trendStreak');
+    if (streakEl){
+      const lines = [activeDaysText('反転し', sensorLog, start, trendPeriod), streakText(sensorLog)].filter(Boolean);
+      streakEl.innerHTML = lines.map(t => '<div>' + escapeHtml(t) + '</div>').join('');
+    }
+    const trendWhen = document.getElementById('trendWhen');
+    if (trendWhen) trendWhen.innerHTML = buildWhenHtml(filteredSensor);
 
     const buckets = bucketize(buildTrendBuckets(trendPeriod), filteredSensor, e => e.lawId, LAWS.map(l => l.id));
-    const chartHtml = stackChartHtml(buckets, LAWS.map(l => ({ id: l.id, label: l.label, color: LAW_SHADES[l.id] })), trendPeriod === 'month');
+    const chartHtml = stackChartHtml(buckets, LAWS.map(l => ({ id: l.id, label: l.label, color: LAW_SHADES[l.id] })), trendPeriod);
     trendChart.innerHTML = total === 0
       ? '<div class="db-empty">この期間の記録はまだありません。</div>'
       : chartHtml;
@@ -2248,11 +2381,15 @@
     } else {
       const doneCount = filteredIntents.filter(e => e.done).length;
       ih += buildIntentInsightHtml(trendPeriod, start, periodLabel);
+      const intentDays = activeDaysText('意図を書き換え', intentLog, start, trendPeriod);
+      if (intentDays) ih += '<div class="trend-comment-sub">' + escapeHtml(intentDays) + '</div>';
+      const intentStreak = streakText(intentLog);
+      if (intentStreak) ih += '<div class="trend-comment-sub">' + escapeHtml('意図の書き換えは、' + intentStreak) + '</div>';
       ih += '<div class="trend-stat-line">意図を書き換えた回数：' + filteredIntents.length + '回</div>';
       ih += '<div class="trend-stat-line">「今日やった」にチェックした数：' + doneCount + ' / ' + filteredIntents.length + '</div>';
       const ibuckets = bucketize(buildTrendBuckets(trendPeriod), filteredIntents, e => e.value, INTENT_VALUES);
       ih += '<div class="history-label" style="margin-top:20px;">選んだ価値の推移</div>';
-      ih += stackChartHtml(ibuckets, INTENT_VALUES.map(v => ({ id: v, label: v, color: VALUE_SHADES[v] })), trendPeriod === 'month');
+      ih += stackChartHtml(ibuckets, INTENT_VALUES.map(v => ({ id: v, label: v, color: VALUE_SHADES[v] })), trendPeriod);
       ih += buildDoneRateHtml(filteredIntents);
     }
     if (staleCount > 0){

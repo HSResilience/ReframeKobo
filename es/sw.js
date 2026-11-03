@@ -4,7 +4,7 @@
 // アイコンなどの画像・設定ファイルは「キャッシュ優先＋裏で更新」。
 // アプリを更新したら、下の CACHE_VERSION の数字を1つ上げると、古いキャッシュが自動で消えます。
 
-const CACHE_VERSION = 'v5';
+const CACHE_VERSION = 'v6';
 const CACHE_PREFIX = 'reframe-taller-es-';
 const CACHE_NAME = CACHE_PREFIX + CACHE_VERSION;
 const APP_SHELL = [

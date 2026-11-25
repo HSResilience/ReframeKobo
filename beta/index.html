@@ -4302,6 +4302,17 @@
     return /Line\/|FBAN|FBAV|FB_IAB|Instagram|MicroMessenger|Twitter|; wv\)/i.test(ua);
   }
 
+  // ログインがうまくいかなかったときに、理由を画面に出す
+  function showLoginError(desc, code){
+    const text = String(desc || '') + ' ' + String(code || '');
+    let hint = 'もう一度お試しください。何度も続くときは、運営者にご連絡ください。';
+    if (/exchange external code|invalid_client|client_secret|unauthorized_client/i.test(text)) hint = 'Googleとの連携の設定（クライアントIDやクライアントシークレット）が合っていない可能性があります。';
+    else if (/access_denied/i.test(text)) hint = 'Googleの画面で許可されなかったか、このアカウントがテストユーザーに登録されていない可能性があります。';
+    else if (/redirect/i.test(text)) hint = '戻り先のURLの設定が合っていない可能性があります。';
+    const detail = (desc || code) ? '<p class="acct-small">表示された内容：' + escapeHtml(String(desc || code)) + '</p>' : '';
+    openModal('ログインできませんでした', '<p>' + escapeHtml(hint) + '</p>' + detail, [{ label: '閉じる' }]);
+  }
+
   function startLogin(){
     if (!sb){ openModal('ログインできません', '<p>ログインの部品を読み込めませんでした。通信できる場所で、ページを開き直してください。</p>', [{ label: '閉じる' }]); return; }
     if (isInAppBrowser()){
@@ -4314,7 +4325,8 @@
       return;
     }
     sb.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: location.origin + location.pathname } })
-      .catch(e => { console.error(e); });
+      .then(res => { if (res && res.error){ console.error(res.error); showLoginError(res.error.message, res.error.code); } })
+      .catch(e => { console.error(e); showLoginError(e && e.message, ''); });
   }
 
   function askPassphrase(){
@@ -4466,14 +4478,29 @@
   /* ---- 起動 ---- */
   (function initCloud(){
     loadMeta();
+    // Googleから戻ってきたときの、エラーとコードを先に読んでおく
+    let urlErr = null, hadCode = false;
+    try {
+      const q = new URLSearchParams(location.search), hh = new URLSearchParams(location.hash.replace(/^#/, ''));
+      const d = q.get('error_description') || hh.get('error_description');
+      const c = q.get('error_code') || hh.get('error_code') || q.get('error') || hh.get('error');
+      if (d || c) urlErr = { desc: d || '', code: c || '' };
+      hadCode = !!q.get('code');
+      if (urlErr || hadCode) history.replaceState(null, '', location.pathname);
+    } catch (e) { /* 読めなくても続ける */ }
     try {
       if (window.supabase && window.supabase.createClient){
         sb = window.supabase.createClient(SB_URL, SB_KEY, { auth: { flowType: 'pkce', persistSession: true, autoRefreshToken: true, detectSessionInUrl: true } });
       }
     } catch (e) { console.error('ログインの部品を準備できませんでした', e); }
     renderAccount();
+    if (urlErr) setTimeout(() => showLoginError(urlErr.desc, urlErr.code), 300);
     if (!sb) return;
     sb.auth.onAuthStateChange((event, session) => {
+      if (event === 'INITIAL_SESSION' && !session && hadCode && !urlErr){
+        hadCode = false;
+        setTimeout(() => showLoginError('ログインの確認に失敗しました（コードを交換できませんでした）', 'exchange external code'), 300);
+      }
       if (event === 'SIGNED_OUT'){ setTimeout(() => handleSession(null), 0); return; }
       if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN'){
         if (sbUser && session && session.user && sbUser.id === session.user.id) return; // 同じ人の再通知は無視

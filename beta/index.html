@@ -4005,6 +4005,7 @@
   let sbProfile = null;   // profiles の行
   let syncState = 'off';  // off | needs-pass | syncing | synced | pending | offline | error
   let applying = false;   // クラウドの内容を端末へ反映している間は、変更として数えない
+  let loginDiag = '';     // ログイン失敗の調査用（項目の名前だけ。中身は含めない）
   let loggingOut = false; // ログアウトや端末データの削除の最中は、同期しない
   let syncRunning = false, syncAgain = false, syncTimer = null, lastSyncAt = 0;
   let meta = { uid: null, coll: {}, settings: null };
@@ -4311,7 +4312,10 @@
     else if (/exchange external code|invalid_client|client_secret|unauthorized_client/i.test(text)) hint = 'Googleとの連携の設定（クライアントIDやクライアントシークレット）が合っていない可能性があります。';
     else if (/access_denied/i.test(text)) hint = 'Googleの画面で許可されなかったか、このアカウントがテストユーザーに登録されていない可能性があります。';
     else if (/redirect/i.test(text)) hint = '戻り先のURLの設定が合っていない可能性があります。';
-    const detail = (desc || code) ? '<p class="acct-small">表示された内容：' + escapeHtml(String(desc || code)) + '</p>' : '';
+    let keys = '';
+    try { keys = Object.keys(localStorage).filter(k => k.indexOf('sb-') === 0).map(k => k.replace(/^sb-[a-z0-9]+-/, '')).join(',') || 'なし'; } catch (e) { keys = '読めません'; }
+    const detail = ((desc || code) ? '<p class="acct-small">表示された内容：' + escapeHtml(String(desc || code)) + '</p>' : '') +
+      '<p class="acct-small">調査用の情報：' + escapeHtml(loginDiag + ' ／ 保存された項目 ' + keys) + '</p>';
     openModal('ログインできませんでした', '<p>' + escapeHtml(hint) + '</p>' + detail, [{ label: '閉じる' }]);
   }
 
@@ -4484,6 +4488,10 @@
     // Googleから戻ってきたときの、エラーとコードを先に読んでおく
     let urlErr = null, hadCode = false;
     try {
+      const qk = Array.from(new URLSearchParams(location.search).keys()), hk = Array.from(new URLSearchParams(location.hash.replace(/^#/, '')).keys());
+      loginDiag = '戻り先 ' + location.pathname + ' ／ 受け取った項目 ' + (qk.concat(hk).join(',') || 'なし');
+    } catch (e) {}
+    try {
       const q = new URLSearchParams(location.search), hh = new URLSearchParams(location.hash.replace(/^#/, ''));
       const d = q.get('error_description') || hh.get('error_description');
       const c = q.get('error_code') || hh.get('error_code') || q.get('error') || hh.get('error');
@@ -4504,7 +4512,11 @@
       if (event === 'INITIAL_SESSION'){
         const failed = !session && hadCode && !urlErr;
         hadCode = false;
-        if (failed) setTimeout(() => showLoginError('ログインの確認に失敗しました（戻ってきた情報を読み取れませんでした）', 'pkce'), 300);
+        if (failed) setTimeout(async () => {
+          let msg = 'ログインの確認に失敗しました（戻ってきた情報を読み取れませんでした）';
+          try { const r = await sb.auth.initialize(); if (r && r.error && r.error.message) msg = r.error.message + (r.error.status ? ' (' + r.error.status + ')' : ''); } catch (e) { if (e && e.message) msg = e.message; }
+          showLoginError(msg, 'pkce');
+        }, 300);
         setTimeout(cleanUrl, 500);
       }
       if (event === 'SIGNED_OUT'){ setTimeout(() => handleSession(null), 0); return; }

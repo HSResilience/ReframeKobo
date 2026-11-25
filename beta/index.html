@@ -3983,7 +3983,7 @@
   // ログインして合言葉を確認すると、データがクラウドにも保存され、複数の端末で同じデータを使えます。
   const SB_URL = 'https://cuhdrprmsdjciwdxmsdj.supabase.co';
   const SB_KEY = 'sb_publishable_k1eU7t9eXpgrwjF4bRI8iQ_8bH1WNZj'; // 公開してよいキー（データはアクセス制限で守られています）
-  const PASSPHRASE_HINT = '本の中に書かれている合言葉を入れてください。';
+  const PASSPHRASE_HINT = '本書で紹介している5つのスイッチのうち、未来を悪く予測してしまうのは○○○スイッチ';
   const META_KEY = 'sync-meta-v1';
   const DATA_KEYS = ['intent-log-v1', 'trouble-db-v1', 'sensor-log-v1', 'badge-counts-v1', 'reset-config-v1', 'text-size-v1'];
 
@@ -4338,7 +4338,7 @@
   function askPassphrase(){
     if (document.getElementById('passModal')) return;
     const m = openModal('合言葉を入れてください',
-      '<p>' + escapeHtml(PASSPHRASE_HINT) + '</p><input type="text" id="passInput" class="acct-input" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="合言葉"><p id="passMsg" class="acct-msg" aria-live="polite"></p><p class="acct-small">合言葉の確認が済むまでは、データは、この端末の中だけに保存されます。</p>',
+      '<p>' + escapeHtml(PASSPHRASE_HINT) + '</p><input type="text" id="passInput" class="acct-input" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="○○○に入る言葉"><p id="passMsg" class="acct-msg" aria-live="polite"></p><p class="acct-small">合言葉の確認が済むまでは、データは、この端末の中だけに保存されます。</p>',
       [{ label: '確認する', sage: true, onClick: async ({ box, button, close }) => {
           const inp = box.querySelector('#passInput');
           const msg = box.querySelector('#passMsg');

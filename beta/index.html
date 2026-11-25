@@ -4005,6 +4005,7 @@
   let sbProfile = null;   // profiles の行
   let syncState = 'off';  // off | needs-pass | syncing | synced | pending | offline | error
   let applying = false;   // クラウドの内容を端末へ反映している間は、変更として数えない
+  let loggingOut = false; // ログアウトや端末データの削除の最中は、同期しない
   let syncRunning = false, syncAgain = false, syncTimer = null, lastSyncAt = 0;
   let meta = { uid: null, coll: {}, settings: null };
 
@@ -4224,7 +4225,7 @@
   }
 
   async function runSync(){
-    if (!sb || !sbUser || !sbProfile || !sbProfile.access_granted) return;
+    if (loggingOut || !sb || !sbUser || !sbProfile || !sbProfile.access_granted) return;
     if (syncRunning){ syncAgain = true; return; }
     syncRunning = true;
     setState('syncing');
@@ -4255,7 +4256,7 @@
   // 保存のたびに呼ばれる（saveWithRetry の中から）
   syncEngine = {
     changed: function(key){
-      if (applying || !sbUser || !sbProfile || !sbProfile.access_granted) return;
+      if (applying || loggingOut || !sbUser || !sbProfile || !sbProfile.access_granted) return;
       const c = collByKey(key);
       try { if (c) detect(c); saveMeta(); } catch (e) { console.error(e); }
       if (navigator.onLine === false) setState('offline'); else setState('pending');
@@ -4306,7 +4307,8 @@
   function showLoginError(desc, code){
     const text = String(desc || '') + ' ' + String(code || '');
     let hint = 'もう一度お試しください。何度も続くときは、運営者にご連絡ください。';
-    if (/exchange external code|invalid_client|client_secret|unauthorized_client/i.test(text)) hint = 'Googleとの連携の設定（クライアントIDやクライアントシークレット）が合っていない可能性があります。';
+    if (/pkce/i.test(text)) hint = 'ログインの確認ができませんでした。ふだん使っているブラウザで（プライベートブラウズやシークレットモードを使わずに）、もう一度お試しください。';
+    else if (/exchange external code|invalid_client|client_secret|unauthorized_client/i.test(text)) hint = 'Googleとの連携の設定（クライアントIDやクライアントシークレット）が合っていない可能性があります。';
     else if (/access_denied/i.test(text)) hint = 'Googleの画面で許可されなかったか、このアカウントがテストユーザーに登録されていない可能性があります。';
     else if (/redirect/i.test(text)) hint = '戻り先のURLの設定が合っていない可能性があります。';
     const detail = (desc || code) ? '<p class="acct-small">表示された内容：' + escapeHtml(String(desc || code)) + '</p>' : '';
@@ -4455,6 +4457,7 @@
     openModal('ログアウトしますか？', '<p>この端末のデータも消しますか？ 共有の端末では、消すことをおすすめします。アカウントに保存したデータは、消えません。</p>',
       [{ label: 'データも消してログアウト', sage: true, onClick: async () => {
           if (sbProfile && sbProfile.access_granted){ try { await runSync(); } catch (e) {} }
+          loggingOut = true; clearTimeout(syncTimer);
           await sb.auth.signOut(); clearLocalData(); location.reload(); return true;
         } },
        { label: 'ログアウトのみ（データは残す）', onClick: async () => { await sb.auth.signOut(); sbUser = null; sbProfile = null; setState('off'); } },
@@ -4486,20 +4489,29 @@
       const c = q.get('error_code') || hh.get('error_code') || q.get('error') || hh.get('error');
       if (d || c) urlErr = { desc: d || '', code: c || '' };
       hadCode = !!q.get('code');
-      if (urlErr || hadCode) history.replaceState(null, '', location.pathname);
+      // 注意: ?code= は、ログインの部品が読み終わるまで消さない（下の onAuthStateChange のあとで消す）
     } catch (e) { /* 読めなくても続ける */ }
+    function cleanUrl(){ try { if (/[?&#](code|error|error_description|error_code)=/.test(location.search + location.hash)) history.replaceState(null, '', location.pathname); } catch (e) {} }
     try {
       if (window.supabase && window.supabase.createClient){
         sb = window.supabase.createClient(SB_URL, SB_KEY, { auth: { flowType: 'pkce', persistSession: true, autoRefreshToken: true, detectSessionInUrl: true } });
       }
     } catch (e) { console.error('ログインの部品を準備できませんでした', e); }
     renderAccount();
-    if (urlErr) setTimeout(() => showLoginError(urlErr.desc, urlErr.code), 300);
+    if (urlErr) setTimeout(() => { showLoginError(urlErr.desc, urlErr.code); cleanUrl(); }, 300);
     if (!sb) return;
     sb.auth.onAuthStateChange((event, session) => {
-      if (event === 'INITIAL_SESSION' && !session && hadCode && !urlErr){
+      if (event === 'INITIAL_SESSION'){
+        const failedExchange = !session && hadCode && !urlErr;
         hadCode = false;
-        setTimeout(() => showLoginError('ログインの確認に失敗しました（コードを交換できませんでした）', 'exchange external code'), 300);
+        if (failedExchange){
+          setTimeout(async () => {
+            let msg = 'ログインの確認に失敗しました';
+            try { const r = await sb.auth.initialize(); if (r && r.error && r.error.message) msg = r.error.message; } catch (e) { if (e && e.message) msg = e.message; }
+            showLoginError(msg, 'pkce');
+            cleanUrl();
+          }, 300);
+        } else { setTimeout(cleanUrl, 500); }
       }
       if (event === 'SIGNED_OUT'){ setTimeout(() => handleSession(null), 0); return; }
       if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN'){

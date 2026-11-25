@@ -4494,31 +4494,37 @@
     function cleanUrl(){ try { if (/[?&#](code|error|error_description|error_code)=/.test(location.search + location.hash)) history.replaceState(null, '', location.pathname); } catch (e) {} }
     try {
       if (window.supabase && window.supabase.createClient){
-        sb = window.supabase.createClient(SB_URL, SB_KEY, { auth: { flowType: 'pkce', persistSession: true, autoRefreshToken: true, detectSessionInUrl: true } });
+        sb = window.supabase.createClient(SB_URL, SB_KEY, { auth: { flowType: 'pkce', persistSession: true, autoRefreshToken: true, detectSessionInUrl: false } });
       }
     } catch (e) { console.error('ログインの部品を準備できませんでした', e); }
     renderAccount();
     if (urlErr) setTimeout(() => { showLoginError(urlErr.desc, urlErr.code); cleanUrl(); }, 300);
     if (!sb) return;
     sb.auth.onAuthStateChange((event, session) => {
-      if (event === 'INITIAL_SESSION'){
-        const failedExchange = !session && hadCode && !urlErr;
-        hadCode = false;
-        if (failedExchange){
-          setTimeout(async () => {
-            let msg = 'ログインの確認に失敗しました';
-            try { const r = await sb.auth.initialize(); if (r && r.error && r.error.message) msg = r.error.message; } catch (e) { if (e && e.message) msg = e.message; }
-            showLoginError(msg, 'pkce');
-            cleanUrl();
-          }, 300);
-        } else { setTimeout(cleanUrl, 500); }
-      }
+      if (event === 'INITIAL_SESSION'){ setTimeout(cleanUrl, 500); }
       if (event === 'SIGNED_OUT'){ setTimeout(() => handleSession(null), 0); return; }
       if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN'){
         if (sbUser && session && session.user && sbUser.id === session.user.id) return; // 同じ人の再通知は無視
         setTimeout(() => handleSession(session), 0);
       }
     });
+    // Googleから戻ってきたとき: コードを、ここで自分でセッションに交換する（失敗の理由をそのまま表示するため）
+    if (hadCode && !urlErr){
+      const code = new URLSearchParams(location.search).get('code');
+      (async () => {
+        try {
+          const { error } = await sb.auth.exchangeCodeForSession(code);
+          if (error){
+            console.error('コードの交換に失敗', error);
+            const detail = [error.message, error.status ? '(' + error.status + ')' : '', error.code ? '[' + error.code + ']' : ''].filter(Boolean).join(' ');
+            showLoginError(detail, 'pkce');
+          }
+        } catch (e) {
+          console.error(e);
+          showLoginError((e && e.message) || 'ログインの確認に失敗しました', 'pkce');
+        } finally { cleanUrl(); }
+      })();
+    }
     window.addEventListener('online', () => scheduleSync(500));
     window.addEventListener('offline', () => { if (sbUser) setState('offline'); });
     document.addEventListener('visibilitychange', () => {

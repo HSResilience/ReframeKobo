@@ -15,6 +15,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@400;500;600&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <style>
   :root{
     --bg: #FAF8F3;
@@ -1339,6 +1340,35 @@
   body.text-lg .mypage-secondary{ font-size: 14.5px; }
   body.text-lg .ai-disclaimer{ font-size: 12.5px; }
   body.text-lg .original-echo{ font-size: 14px; }
+
+  /* ---- アカウント（ログイン・同期） ---- */
+  .beta-banner{ font-size: 12.5px; color: var(--developed); background: #F6EFDD; border: 1px solid var(--sage); border-radius: 8px; padding: 6px 10px; margin: 0 0 10px; text-align: center; }
+  .acct-row{ display: flex; align-items: center; justify-content: flex-end; gap: 10px; margin: 0 0 10px; min-height: 36px; position: relative; flex-wrap: wrap; }
+  .acct-login-btn{ font-family: var(--sans); font-size: 14px; color: var(--film); background: var(--panel); border: 1px solid var(--safelight); border-radius: 20px; padding: 7px 16px; cursor: pointer; }
+  .acct-login-note{ font-size: 12.5px; color: var(--muted); margin-right: auto; }
+  .acct-in{ display: flex; align-items: center; gap: 8px; }
+  .acct-avatar{ width: 30px; height: 30px; border-radius: 50%; background: var(--safelight); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 700; }
+  .acct-status{ font-size: 13px; color: var(--muted); background: none; border: none; font-family: var(--sans); padding: 0; }
+  .acct-status[data-state="needs-pass"]{ color: var(--developed); text-decoration: underline; cursor: pointer; }
+  .acct-status[data-state="error"]{ color: #A33; }
+  .acct-menu-btn{ font-family: var(--sans); font-size: 18px; line-height: 1; color: var(--film); background: transparent; border: 1px solid var(--rim); border-radius: 8px; padding: 4px 10px; cursor: pointer; }
+  .acct-menu{ position: absolute; right: 0; top: 40px; z-index: 30; background: var(--panel); border: 1px solid var(--rim); border-radius: 10px; box-shadow: 0 6px 20px rgba(0,0,0,.12); padding: 8px; min-width: 220px; display: flex; flex-direction: column; gap: 4px; }
+  .acct-menu .acct-email{ font-size: 12.5px; color: var(--muted); padding: 6px 10px; word-break: break-all; }
+  .acct-menu button{ font-family: var(--sans); font-size: 14.5px; text-align: left; color: var(--film); background: transparent; border: none; border-radius: 6px; padding: 9px 10px; cursor: pointer; }
+  .acct-menu button:hover{ background: var(--dark2); }
+  .acct-menu button.danger{ color: #A33; }
+  .acct-overlay{ position: fixed; inset: 0; background: rgba(26,21,18,.45); z-index: 100; display: flex; align-items: center; justify-content: center; padding: 16px; }
+  .acct-modal{ background: var(--panel); border-radius: 14px; max-width: 420px; width: 100%; padding: 20px 18px 16px; max-height: 90vh; overflow: auto; }
+  .acct-modal-title{ font-family: var(--serif); font-size: 18px; font-weight: 600; margin-bottom: 10px; }
+  .acct-modal-body{ font-size: 14.5px; line-height: 1.75; }
+  .acct-modal-body p{ margin: 0 0 10px; }
+  .acct-modal-btns{ display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
+  .acct-modal-btns .dev-btn{ width: 100%; }
+  .acct-input{ width: 100%; font-family: var(--sans); font-size: 16px; padding: 10px 12px; border: 1px solid var(--rim); border-radius: 8px; background: #fff; }
+  .acct-msg{ min-height: 1.4em; color: #A33; font-size: 13.5px; }
+  .acct-small{ font-size: 12.5px; color: var(--muted); }
+  .legal-links{ margin: 28px 0 8px; text-align: center; font-size: 12.5px; color: var(--muted); }
+  .legal-links a{ color: var(--developed); text-underline-offset: 3px; margin: 0 8px; }
 </style>
 </head>
 <body>
@@ -1351,6 +1381,23 @@
   </header>
 
   <div class="home-screen" id="homeScreen">
+    <div class="acct-row" id="acctRow">
+      <div id="acctLoggedOut" style="display:contents">
+        <span class="acct-login-note">ログインすると、記録をクラウドに保存できます</span>
+        <button type="button" class="acct-login-btn" id="acctLoginBtn">Googleでログイン</button>
+      </div>
+      <div class="acct-in hidden" id="acctLoggedIn">
+        <span class="acct-avatar" id="acctAvatar" aria-hidden="true"></span>
+        <button type="button" class="acct-status" id="acctStatus"></button>
+        <button type="button" class="acct-menu-btn" id="acctMenuBtn" aria-label="アカウントのメニュー">⋯</button>
+        <div class="acct-menu hidden" id="acctMenu">
+          <div class="acct-email" id="acctEmail"></div>
+          <button type="button" id="acctSyncNow">今すぐ同期する</button>
+          <button type="button" id="acctLogout">ログアウト</button>
+          <button type="button" id="acctDelete" class="danger">アカウントを削除</button>
+        </div>
+      </div>
+    </div>
     <div class="top-utility-row">
       <a class="guide-link" href="manual.html">使い方ガイド</a>
       <div class="text-size-row">
@@ -1437,6 +1484,7 @@
       <div class="badge-grid" id="badgeGrid"></div>
       <div class="developed-count" id="developedCount"></div>
     </div>
+    <div class="legal-links"><a href="privacy.html">プライバシーポリシー</a><a href="terms.html">利用規約</a></div>
   </div>
 
   <!-- ===== セクション1: 思考反転 ===== -->
@@ -1834,10 +1882,12 @@
   // プライベートブラウジングやストレージ容量超過では失敗することがあるため、
   // 必ずtry/catchで囲んで使う。
   const LS_PREFIX = 'reframe-koubou:';
+  let syncEngine = null; // ログインして同期するときだけ使う（下の「クラウド保存」で設定）
 
   async function saveWithRetry(key, value){
     try {
       localStorage.setItem(LS_PREFIX + key, value);
+      if (syncEngine) { try { syncEngine.changed(key); } catch (e) { console.error(e); } }
       return true;
     } catch (e) {
       console.error('保存に失敗しました', key, e);
@@ -3927,6 +3977,561 @@
 
   loadResetConfig();
   loadTextSize();
+
+  /* ========== クラウド保存（Googleログイン・合言葉・同期） ========== */
+  // ログインしなくても、これまでどおり端末の中だけで使えます。
+  // ログインして合言葉を確認すると、データがクラウドにも保存され、複数の端末で同じデータを使えます。
+  const SB_URL = 'https://cuhdrprmsdjciwdxmsdj.supabase.co';
+  const SB_KEY = 'sb_publishable_k1eU7t9eXpgrwjF4bRI8iQ_8bH1WNZj'; // 公開してよいキー（データはアクセス制限で守られています）
+  const PASSPHRASE_HINT = '本書で紹介している5つのスイッチのうち、未来を悪く予測してしまうのは○○○スイッチ';
+  const META_KEY = 'sync-meta-v1';
+  const DATA_KEYS = ['intent-log-v1', 'trouble-db-v1', 'sensor-log-v1', 'badge-counts-v1', 'reset-config-v1', 'text-size-v1'];
+
+  const acctRow = document.getElementById('acctRow');
+  const acctLoggedOut = document.getElementById('acctLoggedOut');
+  const acctLoggedIn = document.getElementById('acctLoggedIn');
+  const acctLoginBtn = document.getElementById('acctLoginBtn');
+  const acctAvatar = document.getElementById('acctAvatar');
+  const acctStatus = document.getElementById('acctStatus');
+  const acctMenuBtn = document.getElementById('acctMenuBtn');
+  const acctMenu = document.getElementById('acctMenu');
+  const acctEmail = document.getElementById('acctEmail');
+  const acctSyncNow = document.getElementById('acctSyncNow');
+  const acctLogout = document.getElementById('acctLogout');
+  const acctDelete = document.getElementById('acctDelete');
+
+  let sb = null;          // Supabaseのクライアント
+  let sbUser = null;      // ログイン中のユーザー
+  let sbProfile = null;   // profiles の行
+  let syncState = 'off';  // off | needs-pass | syncing | synced | pending | offline | error
+  let applying = false;   // クラウドの内容を端末へ反映している間は、変更として数えない
+  let loginDiag = '';     // ログイン失敗の調査用（項目の名前だけ。中身は含めない）
+  let loggingOut = false; // ログアウトや端末データの削除の最中は、同期しない
+  let syncRunning = false, syncAgain = false, syncTimer = null, lastSyncAt = 0;
+  let meta = { uid: null, coll: {}, settings: null };
+
+  /* ---- 小さな道具 ---- */
+  function hashStr(s){ // cyrb53（同じ内容なら、どの端末でも同じ値になる）
+    let h1 = 0xdeadbeef, h2 = 0x41c6ce57;
+    for (let i = 0; i < s.length; i++){
+      const ch = s.charCodeAt(i);
+      h1 = Math.imul(h1 ^ ch, 2654435761);
+      h2 = Math.imul(h2 ^ ch, 1597334677);
+    }
+    h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+    h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+    return (4294967296 * (2097151 & h2) + (h1 >>> 0)).toString(36);
+  }
+  function stable(o){
+    if (Array.isArray(o)) return '[' + o.map(stable).join(',') + ']';
+    if (o && typeof o === 'object'){
+      return '{' + Object.keys(o).sort().map(k => JSON.stringify(k) + ':' + stable(o[k])).join(',') + '}';
+    }
+    return JSON.stringify(o === undefined ? null : o);
+  }
+  function stripId(it){ const c = Object.assign({}, it); delete c._id; return c; }
+  function hashItem(it){ return hashStr(stable(stripId(it))); }
+
+  function loadMeta(){
+    try {
+      const raw = loadLocal(META_KEY);
+      if (raw){ const m = JSON.parse(raw); if (m && typeof m === 'object') meta = Object.assign({ uid: null, coll: {}, settings: null }, m); }
+    } catch (e) { /* 壊れていれば空から始める */ }
+  }
+  function saveMeta(){ try { localStorage.setItem(LS_PREFIX + META_KEY, JSON.stringify(meta)); } catch (e) { console.error(e); } }
+
+  /* ---- 同期する表の定義 ---- */
+  const COLLS = [
+    { name: 'intents', table: 'intents', key: 'intent-log-v1',
+      get: () => intentLog, set: v => { intentLog = v; }, save: () => saveIntentLog(), render: () => renderIntentLog(),
+      toRow: (id, it) => ({ id: id, data: stripId(it) }), fromRow: r => r.data || {} },
+    { name: 'troubles', table: 'troubles', key: 'trouble-db-v1',
+      get: () => troubleDB, set: v => { troubleDB = v; }, save: () => saveDB(), render: () => renderDBList(),
+      toRow: (id, it) => ({ id: id, data: stripId(it) }), fromRow: r => r.data || {} },
+    { name: 'sensor', table: 'sensor_log', key: 'sensor-log-v1',
+      get: () => sensorLog, set: v => { sensorLog = v; }, save: () => saveSensorLog(), render: () => { try { renderTrendGraph(); } catch (e) {} },
+      toRow: (id, it) => ({ id: id, law: String(it.lawId), at: new Date(it.at).toISOString() }),
+      fromRow: r => ({ lawId: r.law, at: Date.parse(r.at) }),
+      tombExtra: it => ({ law: String(it.lawId), at: new Date(it.at).toISOString() }) }
+  ];
+  function collByKey(key){
+    if (COLLS.some(c => c.key === key)) return COLLS.find(c => c.key === key);
+    return null;
+  }
+
+  function makeId(it, taken){
+    let id = 'i' + hashItem(it);
+    let n = 1;
+    while (taken.has(id)){ id = 'i' + hashItem(it) + '-' + (++n); }
+    return id;
+  }
+
+  // 端末のデータを調べて、新しい・変わった・消えたものを記録する（まだ送らない）
+  function detect(c){
+    const m = meta.coll[c.name] || (meta.coll[c.name] = {});
+    const arr = c.get();
+    const now = Date.now();
+    const seen = new Set();
+    const taken = new Set(arr.filter(it => it._id).map(it => it._id));
+    arr.forEach(it => {
+      if (!it._id) it._id = makeId(it, taken), taken.add(it._id);
+      seen.add(it._id);
+      const h = hashItem(it);
+      const e = m[it._id];
+      if (!e || e.deleted || e.h !== h){
+        m[it._id] = { h: h, u: now, synced: false, x: c.tombExtra ? c.tombExtra(it) : null };
+      }
+    });
+    Object.keys(m).forEach(id => {
+      if (!seen.has(id) && !m[id].deleted){
+        m[id] = { h: m[id].h, u: now, synced: false, deleted: true, x: m[id].x || null };
+      }
+    });
+  }
+
+  function sortDesc(arr){ arr.sort((a, b) => (b.at || 0) - (a.at || 0)); }
+
+  /* ---- 1つの表を同期する ---- */
+  async function syncColl(c){
+    detect(c);
+    const m = meta.coll[c.name];
+    const { data: rows, error } = await sb.from(c.table).select('*');
+    if (error) throw error;
+    const cloud = new Map();
+    (rows || []).forEach(r => cloud.set(r.id, r));
+
+    const arr = c.get().slice();
+    const byId = new Map(arr.map(it => [it._id, it]));
+    let changedLocal = false;
+    const toPush = [];
+
+    // クラウドにあるものを見て、端末へ反映するか、送るかを決める
+    cloud.forEach((r, id) => {
+      const cu = Date.parse(r.updated_at) || 0;
+      const e = m[id];
+      const localPending = e && !e.synced;
+      if (localPending && e.u >= cu){ return; } // 端末の変更のほうが新しい → あとで送る
+      if (r.deleted_at){
+        if (byId.has(id)){ byId.delete(id); changedLocal = true; }
+        m[id] = { h: e ? e.h : '', u: cu, synced: true, deleted: true, x: e ? e.x : null };
+        return;
+      }
+      const incoming = Object.assign({}, c.fromRow(r), { _id: id });
+      const ih = hashItem(incoming);
+      const cur = byId.get(id);
+      if (!cur || hashItem(cur) !== ih){
+        byId.set(id, incoming); changedLocal = true;
+      }
+      m[id] = { h: ih, u: cu, synced: true, x: c.tombExtra ? c.tombExtra(incoming) : null };
+    });
+
+    // 端末にだけある（または新しい）ものを送る
+    Object.keys(m).forEach(id => {
+      const e = m[id];
+      if (e.synced) return;
+      const r = cloud.get(id);
+      const cu = r ? (Date.parse(r.updated_at) || 0) : 0;
+      if (r && cu > e.u) return;
+      const base = { user_id: sbUser.id, updated_at: new Date(e.u).toISOString() };
+      if (e.deleted){
+        if (!r && !e.x && c.name === 'sensor'){ e.synced = true; return; } // クラウドに一度も送っていない削除は送らない
+        const tomb = Object.assign({ id: id, data: {} }, c.name === 'sensor' ? e.x : {}, base, { deleted_at: new Date(e.u).toISOString() });
+        toPush.push({ id: id, row: tomb });
+      } else {
+        const it = byId.get(id);
+        if (!it) return;
+        toPush.push({ id: id, row: Object.assign({}, c.toRow(id, it), base, { deleted_at: null }) });
+      }
+    });
+    for (let i = 0; i < toPush.length; i += 300){
+      const part = toPush.slice(i, i + 300);
+      const { error: e2 } = await sb.from(c.table).upsert(part.map(p => p.row), { onConflict: 'user_id,id' });
+      if (e2) throw e2;
+      part.forEach(p => { if (m[p.id]) m[p.id].synced = true; });
+    }
+
+    if (changedLocal){
+      const next = Array.from(byId.values());
+      sortDesc(next);
+      applying = true;
+      try { c.set(next); await c.save(); c.render(); } finally { applying = false; }
+    }
+  }
+
+  /* ---- バッジ（大きいほうの数を採用する） ---- */
+  async function syncBadges(){
+    const { data: rows, error } = await sb.from('badges').select('*');
+    if (error) throw error;
+    const cloud = {};
+    (rows || []).forEach(r => { cloud[r.law] = r.count; });
+    const merged = Object.assign({}, badgeCounts);
+    let changedLocal = false;
+    const toPush = [];
+    const laws = new Set(Object.keys(badgeCounts).concat(Object.keys(cloud)));
+    laws.forEach(l => {
+      const lc = badgeCounts[l] || 0, cc = cloud[l] || 0;
+      const best = Math.max(lc, cc);
+      if (best !== lc){ merged[l] = best; changedLocal = true; }
+      if (best > cc){ toPush.push({ user_id: sbUser.id, law: l, count: best, updated_at: new Date().toISOString() }); }
+    });
+    if (toPush.length){
+      const { error: e2 } = await sb.from('badges').upsert(toPush, { onConflict: 'user_id,law' });
+      if (e2) throw e2;
+    }
+    if (changedLocal){
+      applying = true;
+      try { badgeCounts = merged; await saveBadges(); renderBadges(); } finally { applying = false; }
+    }
+  }
+
+  /* ---- 設定（Cの設定と文字サイズ。新しいほうを採用する） ---- */
+  function settingsData(){ return { reset: activityState, large: !!isLargeText }; }
+  async function syncSettings(){
+    const now = Date.now();
+    const data = settingsData();
+    const h = hashStr(stable(data));
+    const first = !meta.settings;
+    const { data: rows, error } = await sb.from('settings').select('*').eq('user_id', sbUser.id);
+    if (error) throw error;
+    const r = rows && rows[0];
+    const cu = r ? (Date.parse(r.updated_at) || 0) : 0;
+    if (first) meta.settings = { h: r ? '' : h, u: r ? 0 : now, synced: !!r };
+    const st = meta.settings;
+    if (!first && st.h !== h){ st.h = h; st.u = now; st.synced = false; } // 端末の設定が変わった
+    if (r && (st.synced || cu > st.u)){
+      // クラウドのほうが新しい（または端末は変更していない）→ クラウドの設定を使う
+      const rd = r.data || {};
+      const ch = hashStr(stable({ reset: Array.isArray(rd.reset) && rd.reset.length ? rd.reset : activityState, large: !!rd.large }));
+      if (ch !== h){
+        applying = true;
+        try {
+          if (Array.isArray(rd.reset) && rd.reset.length){ activityState = rd.reset; await saveResetConfig(); renderResetCategories(); }
+          isLargeText = !!rd.large; applyTextSize(); await saveWithRetryLater();
+        } finally { applying = false; }
+      }
+      st.h = hashStr(stable(settingsData())); st.u = cu; st.synced = true;
+      return;
+    }
+    if (!st.synced){
+      const { error: e2 } = await sb.from('settings').upsert({ user_id: sbUser.id, data: data, updated_at: new Date(st.u).toISOString() }, { onConflict: 'user_id' });
+      if (e2) throw e2;
+      st.synced = true;
+    }
+  }
+
+  /* ---- 同期の全体 ---- */
+  function setState(s){
+    syncState = s;
+    renderAccount();
+  }
+
+  async function runSync(){
+    if (loggingOut || !sb || !sbUser || !sbProfile || !sbProfile.access_granted) return;
+    if (syncRunning){ syncAgain = true; return; }
+    syncRunning = true;
+    setState('syncing');
+    try {
+      for (const c of COLLS) await syncColl(c);
+      await syncBadges();
+      await syncSettings();
+      meta.uid = sbUser.id;
+      saveMeta();
+      lastSyncAt = Date.now();
+      setState('synced');
+    } catch (e) {
+      console.error('同期に失敗しました', e);
+      saveMeta();
+      setState(navigator.onLine === false ? 'offline' : 'pending');
+      scheduleSync(30000);
+    } finally {
+      syncRunning = false;
+      if (syncAgain){ syncAgain = false; scheduleSync(500); }
+    }
+  }
+  function scheduleSync(ms){
+    if (!sb || !sbUser || !sbProfile || !sbProfile.access_granted) return;
+    clearTimeout(syncTimer);
+    syncTimer = setTimeout(runSync, ms == null ? 1500 : ms);
+  }
+
+  // 保存のたびに呼ばれる（saveWithRetry の中から）
+  syncEngine = {
+    changed: function(key){
+      if (applying || loggingOut || !sbUser || !sbProfile || !sbProfile.access_granted) return;
+      const c = collByKey(key);
+      try { if (c) detect(c); saveMeta(); } catch (e) { console.error(e); }
+      if (navigator.onLine === false) setState('offline'); else setState('pending');
+      scheduleSync(1500);
+    }
+  };
+
+  /* ---- 画面の部品（確認の窓） ---- */
+  function openModal(title, bodyHtml, buttons, opts){
+    const ov = document.createElement('div');
+    ov.className = 'acct-overlay';
+    const box = document.createElement('div');
+    box.className = 'acct-modal';
+    box.setAttribute('role', 'dialog');
+    const h = document.createElement('div');
+    h.className = 'acct-modal-title';
+    h.textContent = title;
+    const b = document.createElement('div');
+    b.className = 'acct-modal-body';
+    b.innerHTML = bodyHtml;
+    const row = document.createElement('div');
+    row.className = 'acct-modal-btns';
+    function close(){ ov.remove(); }
+    buttons.forEach(bt => {
+      const el = document.createElement('button');
+      el.type = 'button';
+      el.className = 'dev-btn' + (bt.sage ? ' sage-btn' : '');
+      el.textContent = bt.label;
+      el.addEventListener('click', async () => {
+        if (bt.onClick){ const keep = await bt.onClick({ box: box, close: close, button: el }); if (keep === true) return; }
+        close();
+      });
+      row.appendChild(el);
+    });
+    box.appendChild(h); box.appendChild(b); box.appendChild(row);
+    ov.appendChild(box);
+    document.body.appendChild(ov);
+    if (opts && opts.onOpen) opts.onOpen(box);
+    return { close: close, box: box };
+  }
+
+  function isInAppBrowser(){
+    const ua = navigator.userAgent || '';
+    return /Line\/|FBAN|FBAV|FB_IAB|Instagram|MicroMessenger|Twitter|; wv\)/i.test(ua);
+  }
+
+  // ログインがうまくいかなかったときに、理由を画面に出す
+  function showLoginError(desc, code){
+    const text = String(desc || '') + ' ' + String(code || '');
+    let hint = 'もう一度お試しください。何度も続くときは、運営者にご連絡ください。';
+    if (/pkce/i.test(text)) hint = 'ログインの確認ができませんでした。ふだん使っているブラウザで（プライベートブラウズやシークレットモードを使わずに）、もう一度お試しください。';
+    else if (/exchange external code|invalid_client|client_secret|unauthorized_client/i.test(text)) hint = 'Googleとの連携の設定（クライアントIDやクライアントシークレット）が合っていない可能性があります。';
+    else if (/access_denied/i.test(text)) hint = 'Googleの画面で許可されなかったか、このアカウントがテストユーザーに登録されていない可能性があります。';
+    else if (/redirect/i.test(text)) hint = '戻り先のURLの設定が合っていない可能性があります。';
+    let keys = '';
+    try { keys = Object.keys(localStorage).filter(k => k.indexOf('sb-') === 0).map(k => k.replace(/^sb-[a-z0-9]+-/, '')).join(',') || 'なし'; } catch (e) { keys = '読めません'; }
+    const detail = ((desc || code) ? '<p class="acct-small">表示された内容：' + escapeHtml(String(desc || code)) + '</p>' : '') +
+      '<p class="acct-small">調査用の情報：' + escapeHtml(loginDiag + ' ／ 保存された項目 ' + keys) + '</p>';
+    openModal('ログインできませんでした', '<p>' + escapeHtml(hint) + '</p>' + detail, [{ label: '閉じる' }]);
+  }
+
+  function startLogin(){
+    if (!sb){ openModal('ログインできません', '<p>ログインの部品を読み込めませんでした。通信できる場所で、ページを開き直してください。</p>', [{ label: '閉じる' }]); return; }
+    if (isInAppBrowser()){
+      openModal('ふだん使っているブラウザで開いてください',
+        '<p>LINEなどのアプリの中では、Googleのログインが使えないことがあります。</p><p>右上のメニュー（…）から「ブラウザで開く」を選ぶか、下のボタンでリンクをコピーして、ブラウザ（Chrome、Safariなど）に貼り付けてください。</p>',
+        [{ label: 'リンクをコピー', sage: true, onClick: async ({ button }) => {
+            try { await navigator.clipboard.writeText(location.href); button.textContent = 'コピーしました'; } catch (e) { button.textContent = 'コピーできませんでした'; }
+            return true;
+          } }, { label: '閉じる' }]);
+      return;
+    }
+    sb.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: location.origin + location.pathname } })
+      .then(res => { if (res && res.error){ console.error(res.error); showLoginError(res.error.message, res.error.code); } })
+      .catch(e => { console.error(e); showLoginError(e && e.message, ''); });
+  }
+
+  function askPassphrase(){
+    if (document.getElementById('passModal')) return;
+    const m = openModal('合言葉を入れてください',
+      '<p>' + escapeHtml(PASSPHRASE_HINT) + '</p><input type="text" id="passInput" class="acct-input" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="○○○に入る言葉"><p id="passMsg" class="acct-msg" aria-live="polite"></p><p class="acct-small">合言葉の確認が済むまでは、データは、この端末の中だけに保存されます。</p>',
+      [{ label: '確認する', sage: true, onClick: async ({ box, button, close }) => {
+          const inp = box.querySelector('#passInput');
+          const msg = box.querySelector('#passMsg');
+          const phrase = inp.value.trim();
+          if (!phrase){ msg.textContent = '合言葉を入力してください。'; return true; }
+          button.disabled = true;
+          msg.textContent = '確認しています…';
+          try {
+            const { data, error } = await sb.rpc('redeem_passphrase', { phrase: phrase });
+            if (error){
+              msg.textContent = /too many/i.test(error.message || '') ? '入力の回数が多すぎます。1時間ほどあけて、もう一度お試しください。' : '確認できませんでした。通信を確かめて、もう一度お試しください。';
+              button.disabled = false; return true;
+            }
+            if (!data){ msg.textContent = '合言葉が違います。もう一度お試しください。'; button.disabled = false; return true; }
+            close(); // 合言葉の窓は先に閉じて、次の確認へ進む
+            await loadProfile();
+            await afterAccess();
+            return true;
+          } catch (e) {
+            console.error(e); msg.textContent = '確認できませんでした。もう一度お試しください。'; button.disabled = false; return true;
+          }
+        } }, { label: 'あとで' }],
+      { onOpen: box => { box.id = 'passModal'; setTimeout(() => { const i = box.querySelector('#passInput'); if (i) i.focus(); }, 50); } });
+    return m;
+  }
+
+  /* ---- ログイン後の流れ ---- */
+  async function loadProfile(){
+    for (let i = 0; i < 4; i++){
+      const { data, error } = await sb.from('profiles').select('*').eq('id', sbUser.id).maybeSingle();
+      if (!error && data){ sbProfile = data; return; }
+      await new Promise(r => setTimeout(r, 600));
+    }
+    sbProfile = null;
+  }
+
+  function hasLocalData(){
+    return (intentLog.length + troubleDB.length + sensorLog.length) > 0 || Object.values(badgeCounts).some(v => v > 0);
+  }
+
+  function clearLocalData(){
+    DATA_KEYS.concat([META_KEY]).forEach(k => { try { localStorage.removeItem(LS_PREFIX + k); } catch (e) {} });
+  }
+
+  async function afterAccess(){
+    // 別のアカウントのデータが、この端末に残っているとき
+    if (meta.uid && meta.uid !== sbUser.id){
+      await new Promise(resolve => {
+        openModal('この端末に、別のアカウントのデータがあります',
+          '<p>この端末には、別のアカウントで使っていたデータが残っています。消してから始めますか？</p>',
+          [{ label: '消してから始める', sage: true, onClick: () => { clearLocalData(); location.reload(); resolve(); return true; } },
+           { label: 'そのまま使う（データを統合する）', onClick: () => { meta = { uid: null, coll: {}, settings: null }; saveMeta(); resolve(); } }]);
+      });
+      if (meta.uid && meta.uid !== sbUser.id) return;
+    }
+    // 初めてこのアカウントで使う端末で、端末にデータがあるとき
+    if (meta.uid !== sbUser.id && hasLocalData()){
+      await new Promise(resolve => {
+        openModal('この端末のデータを、アカウントに保存しますか？',
+          '<p>この端末にある記録を、アカウントに保存します。すでにアカウントにある記録とは、統合されます（同じ内容は1件になります）。</p>',
+          [{ label: '保存する', sage: true, onClick: () => resolve() },
+           { label: '保存しない（ログインだけ）', onClick: () => {
+               // いまの端末のデータは、送らない扱いにする
+               COLLS.forEach(c => { detect(c); Object.keys(meta.coll[c.name] || {}).forEach(id => { meta.coll[c.name][id].synced = true; }); });
+               if (!meta.settings) meta.settings = { h: hashStr(stable(settingsData())), u: Date.now(), synced: true };
+               resolve();
+             } }]);
+      });
+    }
+    meta.uid = sbUser.id; saveMeta();
+    await runSync();
+  }
+
+  async function handleSession(session){
+    if (!session || !session.user){
+      sbUser = null; sbProfile = null; setState('off'); return;
+    }
+    sbUser = session.user;
+    setState('syncing');
+    await loadProfile();
+    if (!sbProfile){ setState('error'); return; }
+    if (!sbProfile.access_granted){
+      setState('needs-pass');
+      askPassphrase();
+      return;
+    }
+    await afterAccess();
+  }
+
+  /* ---- 上の帯の表示 ---- */
+  const STATE_TEXT = {
+    'off': '', 'needs-pass': '合言葉が未確認', 'syncing': '同期中…', 'synced': '同期済み',
+    'pending': '送信待ち', 'offline': '圏外（つながると送ります）', 'error': '読み込めませんでした'
+  };
+  function renderAccount(){
+    if (!acctRow) return;
+    const loggedIn = !!sbUser;
+    acctLoggedOut.classList.toggle('hidden', loggedIn);
+    acctLoggedIn.classList.toggle('hidden', !loggedIn);
+    if (loggedIn){
+      const nm = (sbProfile && sbProfile.display_name) || sbUser.email || '?';
+      acctAvatar.textContent = String(nm).trim().charAt(0).toUpperCase();
+      acctStatus.textContent = STATE_TEXT[syncState] || '';
+      acctStatus.dataset.state = syncState;
+      acctEmail.textContent = sbUser.email || '';
+      acctSyncNow.classList.toggle('hidden', !(sbProfile && sbProfile.access_granted));
+    }
+  }
+
+  acctLoginBtn.addEventListener('click', startLogin);
+  acctMenuBtn.addEventListener('click', () => { acctMenu.classList.toggle('hidden'); });
+  document.addEventListener('click', e => {
+    if (!acctMenu.classList.contains('hidden') && !acctLoggedIn.contains(e.target)) acctMenu.classList.add('hidden');
+  });
+  acctStatus.addEventListener('click', () => { if (syncState === 'needs-pass') askPassphrase(); });
+  acctSyncNow.addEventListener('click', () => { acctMenu.classList.add('hidden'); runSync(); });
+
+  acctLogout.addEventListener('click', () => {
+    acctMenu.classList.add('hidden');
+    openModal('ログアウトしますか？', '<p>この端末のデータも消しますか？ 共有の端末では、消すことをおすすめします。アカウントに保存したデータは、消えません。</p>',
+      [{ label: 'データも消してログアウト', sage: true, onClick: async () => {
+          if (sbProfile && sbProfile.access_granted){ try { await runSync(); } catch (e) {} }
+          loggingOut = true; clearTimeout(syncTimer);
+          await sb.auth.signOut(); clearLocalData(); location.reload(); return true;
+        } },
+       { label: 'ログアウトのみ（データは残す）', onClick: async () => { await sb.auth.signOut(); sbUser = null; sbProfile = null; setState('off'); } },
+       { label: 'キャンセル' }]);
+  });
+
+  acctDelete.addEventListener('click', () => {
+    acctMenu.classList.add('hidden');
+    openModal('アカウントを削除しますか？', '<p>アカウントと、クラウドに保存したデータが、すべて消えます。元には戻せません。</p><p>この端末のデータは、残ります。必要なら、先に「Excelで保存」で書き出してください。</p>',
+      [{ label: '削除する', sage: true, onClick: async ({ button }) => {
+          button.disabled = true;
+          const { error } = await sb.rpc('delete_my_account');
+          if (error){ console.error(error); button.disabled = false; alert('削除できませんでした。通信を確かめて、もう一度お試しください。'); return true; }
+          try { await sb.auth.signOut(); } catch (e) {}
+          meta = { uid: null, coll: {}, settings: null }; saveMeta();
+          location.reload(); return true;
+        } },
+       { label: 'キャンセル' }]);
+  });
+
+  /* ---- 起動 ---- */
+  (function initCloud(){
+    loadMeta();
+    // Googleから戻ってきたときの、エラーとコードを先に読んでおく
+    let urlErr = null, hadCode = false;
+    try {
+      const qk = Array.from(new URLSearchParams(location.search).keys()), hk = Array.from(new URLSearchParams(location.hash.replace(/^#/, '')).keys());
+      loginDiag = '戻り先 ' + location.pathname + ' ／ 受け取った項目 ' + (qk.concat(hk).join(',') || 'なし');
+    } catch (e) {}
+    try {
+      const q = new URLSearchParams(location.search), hh = new URLSearchParams(location.hash.replace(/^#/, ''));
+      const d = q.get('error_description') || hh.get('error_description');
+      const c = q.get('error_code') || hh.get('error_code') || q.get('error') || hh.get('error');
+      if (d || c) urlErr = { desc: d || '', code: c || '' };
+      hadCode = !!q.get('code') || /(^|&)access_token=/.test(location.hash.replace(/^#/, ''));
+      // 注意: ?code= は、ログインの部品が読み終わるまで消さない（下の onAuthStateChange のあとで消す）
+    } catch (e) { /* 読めなくても続ける */ }
+    function cleanUrl(){ try { if (/[?&#](code|access_token|error|error_description|error_code)=/.test(location.search + location.hash)) history.replaceState(null, '', location.pathname); } catch (e) {} }
+    try {
+      if (window.supabase && window.supabase.createClient){
+        sb = window.supabase.createClient(SB_URL, SB_KEY, { auth: { flowType: 'implicit', persistSession: true, autoRefreshToken: true, detectSessionInUrl: true } });
+      }
+    } catch (e) { console.error('ログインの部品を準備できませんでした', e); }
+    renderAccount();
+    if (urlErr) setTimeout(() => { showLoginError(urlErr.desc, urlErr.code); cleanUrl(); }, 300);
+    if (!sb) return;
+    sb.auth.onAuthStateChange((event, session) => {
+      if (event === 'INITIAL_SESSION'){
+        const failed = !session && hadCode && !urlErr;
+        hadCode = false;
+        if (failed) setTimeout(async () => {
+          let msg = 'ログインの確認に失敗しました（戻ってきた情報を読み取れませんでした）';
+          try { const r = await sb.auth.initialize(); if (r && r.error && r.error.message) msg = r.error.message + (r.error.status ? ' (' + r.error.status + ')' : ''); } catch (e) { if (e && e.message) msg = e.message; }
+          showLoginError(msg, 'pkce');
+        }, 300);
+        setTimeout(cleanUrl, 500);
+      }
+      if (event === 'SIGNED_OUT'){ setTimeout(() => handleSession(null), 0); return; }
+      if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN'){
+        if (sbUser && session && session.user && sbUser.id === session.user.id) return; // 同じ人の再通知は無視
+        setTimeout(() => handleSession(session), 0);
+      }
+    });
+    window.addEventListener('online', () => scheduleSync(500));
+    window.addEventListener('offline', () => { if (sbUser) setState('offline'); });
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible' && Date.now() - lastSyncAt > 30000) scheduleSync(500);
+    });
+  })();
+
 })();
 
 // PWA化：サービスワーカーを登録（対応環境・HTTPS配信時のみ有効）

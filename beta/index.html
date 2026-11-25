@@ -4488,43 +4488,31 @@
       const d = q.get('error_description') || hh.get('error_description');
       const c = q.get('error_code') || hh.get('error_code') || q.get('error') || hh.get('error');
       if (d || c) urlErr = { desc: d || '', code: c || '' };
-      hadCode = !!q.get('code');
+      hadCode = !!q.get('code') || /(^|&)access_token=/.test(location.hash.replace(/^#/, ''));
       // 注意: ?code= は、ログインの部品が読み終わるまで消さない（下の onAuthStateChange のあとで消す）
     } catch (e) { /* 読めなくても続ける */ }
-    function cleanUrl(){ try { if (/[?&#](code|error|error_description|error_code)=/.test(location.search + location.hash)) history.replaceState(null, '', location.pathname); } catch (e) {} }
+    function cleanUrl(){ try { if (/[?&#](code|access_token|error|error_description|error_code)=/.test(location.search + location.hash)) history.replaceState(null, '', location.pathname); } catch (e) {} }
     try {
       if (window.supabase && window.supabase.createClient){
-        sb = window.supabase.createClient(SB_URL, SB_KEY, { auth: { flowType: 'pkce', persistSession: true, autoRefreshToken: true, detectSessionInUrl: false } });
+        sb = window.supabase.createClient(SB_URL, SB_KEY, { auth: { flowType: 'implicit', persistSession: true, autoRefreshToken: true, detectSessionInUrl: true } });
       }
     } catch (e) { console.error('ログインの部品を準備できませんでした', e); }
     renderAccount();
     if (urlErr) setTimeout(() => { showLoginError(urlErr.desc, urlErr.code); cleanUrl(); }, 300);
     if (!sb) return;
     sb.auth.onAuthStateChange((event, session) => {
-      if (event === 'INITIAL_SESSION'){ setTimeout(cleanUrl, 500); }
+      if (event === 'INITIAL_SESSION'){
+        const failed = !session && hadCode && !urlErr;
+        hadCode = false;
+        if (failed) setTimeout(() => showLoginError('ログインの確認に失敗しました（戻ってきた情報を読み取れませんでした）', 'pkce'), 300);
+        setTimeout(cleanUrl, 500);
+      }
       if (event === 'SIGNED_OUT'){ setTimeout(() => handleSession(null), 0); return; }
       if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN'){
         if (sbUser && session && session.user && sbUser.id === session.user.id) return; // 同じ人の再通知は無視
         setTimeout(() => handleSession(session), 0);
       }
     });
-    // Googleから戻ってきたとき: コードを、ここで自分でセッションに交換する（失敗の理由をそのまま表示するため）
-    if (hadCode && !urlErr){
-      const code = new URLSearchParams(location.search).get('code');
-      (async () => {
-        try {
-          const { error } = await sb.auth.exchangeCodeForSession(code);
-          if (error){
-            console.error('コードの交換に失敗', error);
-            const detail = [error.message, error.status ? '(' + error.status + ')' : '', error.code ? '[' + error.code + ']' : ''].filter(Boolean).join(' ');
-            showLoginError(detail, 'pkce');
-          }
-        } catch (e) {
-          console.error(e);
-          showLoginError((e && e.message) || 'ログインの確認に失敗しました', 'pkce');
-        } finally { cleanUrl(); }
-      })();
-    }
     window.addEventListener('online', () => scheduleSync(500));
     window.addEventListener('offline', () => { if (sbUser) setState('offline'); });
     document.addEventListener('visibilitychange', () => {

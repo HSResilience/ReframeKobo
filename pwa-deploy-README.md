@@ -82,3 +82,10 @@ python3 build/build_app.py beta   # → beta-index.html（ベータ版。beta/in
 ```
 
 本番は、AIの接続先を、Cloudflare WorkersのプロキシのURLに置き換えます。ベータ版は、上に「ベータ版」の帯が出て、サービスワーカーを登録しません。
+
+## AIの利用条件（ログインと1日の上限）
+
+- AIの中継役（Cloudflare Workers の reframe-proxy）は、アプリから届く「ログインの証明」をSupabaseで確かめ、合言葉の確認が済んだ人だけにAIを使わせます。プログラムは `reframe-proxy-worker.js`。
+- 1日の上限は20回（日本時間の0時に戻る）。回数を変えるときは、`supabase-stage1c-ai-quota.sql` の `ai_daily_limit()` の数字を書き換えて、SQL Editorで実行します。
+- ログインしていない人や、回数を使い切った人は、Aは簡易版、Bは自分で書き換える欄で、そのまま使えます。
+- スペイン語版（es/）も同じ中継役を使っているため、スペイン語版にログインを入れるまでは、スペイン語版のAIは使えません。

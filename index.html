@@ -1881,6 +1881,42 @@
   // このアプリはブラウザのlocalStorageに保存する（この端末・このブラウザだけに残る）。
   // プライベートブラウジングやストレージ容量超過では失敗することがあるため、
   // 必ずtry/catchで囲んで使う。
+
+  /* ---- AIの呼び出し（ログインの証明を付ける。ログインしていない人は簡易版） ---- */
+  let aiAuth = null; // 下の「クラウド保存」で設定
+  async function aiHeaders(){
+    const e = new Error('login'); e.code = 'login';
+    if (!aiAuth) throw e;
+    const token = await aiAuth.token();
+    return { "Content-Type": "application/json", "Authorization": "Bearer " + token };
+  }
+  async function aiError(res){
+    let j = null;
+    try { j = await res.json(); } catch (x) {}
+    const e = new Error('API error ' + res.status);
+    e.status = res.status;
+    e.code = (res.status === 429 && j && j.error === 'quota') ? 'quota' : ((res.status === 401 || res.status === 403) ? 'login' : 'api');
+    if (j && j.limit) e.limit = j.limit;
+    return e;
+  }
+  function aiNoteUsage(res){
+    const used = Number(res.headers.get('X-AI-Used')), limit = Number(res.headers.get('X-AI-Limit'));
+    if (!limit) return;
+    const left = Math.max(limit - used, 0);
+    if (left <= 3){
+      const msg = left === 0 ? '今日のAIの利用回数（' + limit + '回）を使い切りました。明日また使えます。' : '今日は、あと' + left + '回、AIを使えます。';
+      setTimeout(() => {
+        try { if (!hintMsg.textContent) hintMsg.textContent = msg; } catch (x) {}
+        try { if (!hintMsg2.textContent) hintMsg2.textContent = msg; } catch (x) {}
+      }, 0);
+    }
+  }
+  function aiFailText(e, fallback){
+    if (e && e.code === 'login') return 'AIによる提案は、ログインして合言葉の確認が済むと使えます（ホーム画面の上の「Googleでログイン」から）。';
+    if (e && e.code === 'quota') return '今日のAIの利用回数' + (e.limit ? '（' + e.limit + '回）' : '') + 'に達しました。明日また使えます。';
+    return fallback;
+  }
+
   const LS_PREFIX = 'reframe-koubou:';
   let syncEngine = null; // ログインして同期するときだけ使う（下の「クラウド保存」で設定）
 
@@ -2495,7 +2531,7 @@
 
     const response = await fetch(API_ENDPOINT, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: await aiHeaders(),
       body: JSON.stringify({
         model: "claude-sonnet-4-6",
         max_tokens: 400,
@@ -2503,7 +2539,8 @@
         messages: [{ role: "user", content: userContent }]
       })
     });
-    if (!response.ok) throw new Error("API error " + response.status);
+    if (!response.ok) throw await aiError(response);
+    aiNoteUsage(response);
     const data = await response.json();
     const raw = (data.content || []).map(b => b.type === "text" ? b.text : "").join("").trim();
     const cleaned = raw.replace(/```json|```/g, "").trim();
@@ -2544,7 +2581,7 @@
       item = { original: displayOriginal, law: res.law, message: res.reframe, insight: res.insight, nextStep: res.nextStep };
     } catch (e) {
       console.error(e);
-      hintMsg.textContent = '判定に失敗したため、簡易版を表示しています。';
+      hintMsg.textContent = (e && (e.code === 'login' || e.code === 'quota')) ? aiFailText(e, '') + 'いまは、AIを使わない簡易版を表示しています。' : '判定に失敗したため、簡易版を表示しています。';
       const law = classifyByKeyword(thought);
       item = { original: displayOriginal, law: law, message: law.message, insight: '', nextStep: '' };
     }
@@ -3156,7 +3193,7 @@
 
     const response = await fetch(API_ENDPOINT, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: await aiHeaders(),
       body: JSON.stringify({
         model: "claude-sonnet-4-6",
         max_tokens: 200,
@@ -3164,7 +3201,8 @@
         messages: [{ role: "user", content: 'タスク・愚痴：' + grief + '\n選んだ価値軸：' + value }]
       })
     });
-    if (!response.ok) throw new Error("API error " + response.status);
+    if (!response.ok) throw await aiError(response);
+    aiNoteUsage(response);
     const data = await response.json();
     const text = (data.content || []).map(b => b.type === "text" ? b.text : "").join("").trim();
     if (!text) throw new Error("empty response");
@@ -3190,11 +3228,17 @@
       newIntent = await rewriteIntent(grief, selectedValue);
     } catch (e) {
       console.error(e);
-      hintMsg2.textContent = '書き換えに失敗しました。もう一度お試しください。';
-      isLoading2 = false;
-      rewriteBtn.disabled = false;
-      rewriteBtn.textContent = originalLabel;
-      return;
+      if (e && (e.code === 'login' || e.code === 'quota')){
+        // AIを使えないときは、自分で書き換えられるように、空の欄を出す
+        hintMsg2.textContent = aiFailText(e, '') + '下の欄に、「私は〜のために、自分で選んで〜している。」の形で、自分で書いてみましょう。';
+        newIntent = '';
+      } else {
+        hintMsg2.textContent = '書き換えに失敗しました。もう一度お試しください。';
+        isLoading2 = false;
+        rewriteBtn.disabled = false;
+        rewriteBtn.textContent = originalLabel;
+        return;
+      }
     }
 
     griefEcho.textContent = '「' + grief + '」 ／ 選んだ価値：' + selectedValue;
@@ -4253,6 +4297,18 @@
     clearTimeout(syncTimer);
     syncTimer = setTimeout(runSync, ms == null ? 1500 : ms);
   }
+
+  // AIを呼ぶときの、ログインの証明（中継役が確かめる）
+  aiAuth = {
+    token: async function(){
+      const err = new Error('login'); err.code = 'login';
+      if (!sb || !sbUser || !sbProfile || !sbProfile.access_granted) throw err;
+      const { data } = await sb.auth.getSession();
+      const t = data && data.session && data.session.access_token;
+      if (!t) throw err;
+      return t;
+    }
+  };
 
   // 保存のたびに呼ばれる（saveWithRetry の中から）
   syncEngine = {

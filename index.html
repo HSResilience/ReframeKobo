@@ -1392,6 +1392,7 @@
         <button type="button" class="acct-menu-btn" id="acctMenuBtn" aria-label="アカウントのメニュー">⋯</button>
         <div class="acct-menu hidden" id="acctMenu">
           <div class="acct-email" id="acctEmail"></div>
+          <div class="acct-email" id="acctPlan"></div>
           <button type="button" id="acctSyncNow">今すぐ同期する</button>
           <button type="button" id="acctLogout">ログアウト</button>
           <button type="button" id="acctDelete" class="danger">アカウントを削除</button>
@@ -1895,16 +1896,23 @@
     try { j = await res.json(); } catch (x) {}
     const e = new Error('API error ' + res.status);
     e.status = res.status;
-    e.code = (res.status === 429 && j && j.error === 'quota') ? 'quota' : ((res.status === 401 || res.status === 403) ? 'login' : 'api');
+    e.code = (res.status === 429 && j && j.error === 'quota') ? 'quota'
+      : (j && (j.error === 'expired' || j.error === 'trial_used')) ? j.error
+      : ((res.status === 401 || res.status === 403) ? 'login' : 'api');
     if (j && j.limit) e.limit = j.limit;
+    if (e.code === 'expired' || e.code === 'trial_used') { try { if (aiAuth && aiAuth.refreshPlan) aiAuth.refreshPlan(); } catch (x) {} }
     return e;
   }
   function aiNoteUsage(res){
     const used = Number(res.headers.get('X-AI-Used')), limit = Number(res.headers.get('X-AI-Limit'));
+    const trial = res.headers.get('X-AI-Kind') === 'trial';
     if (!limit) return;
     const left = Math.max(limit - used, 0);
-    if (left <= 3){
-      const msg = left === 0 ? '今日のAIの利用回数（' + limit + '回）を使い切りました。明日また使えます。' : '今日は、あと' + left + '回、AIを使えます。';
+    if (trial || left <= 3){
+      const msg = trial
+        ? (left === 0 ? 'お試しのAI（' + limit + '回）を、すべて使いました。' : 'お試しのAIは、あと' + left + '回使えます。')
+        : (left === 0 ? '今日のAIの利用回数（' + limit + '回）を使い切りました。明日また使えます。' : '今日は、あと' + left + '回、AIを使えます。');
+      try { if (trial && aiAuth && aiAuth.refreshPlan) aiAuth.refreshPlan(); } catch (x) {}
       setTimeout(() => {
         try { if (!hintMsg.textContent) hintMsg.textContent = msg; } catch (x) {}
         try { if (!hintMsg2.textContent) hintMsg2.textContent = msg; } catch (x) {}
@@ -1914,6 +1922,8 @@
   function aiFailText(e, fallback){
     if (e && e.code === 'login') return 'AIによる提案は、ログインして合言葉の確認が済むと使えます（ホーム画面の上の「Googleでログイン」から）。';
     if (e && e.code === 'quota') return '今日のAIの利用回数' + (e.limit ? '（' + e.limit + '回）' : '') + 'に達しました。明日また使えます。';
+    if (e && e.code === 'expired') return '購入者特典のAIの利用期間が終わりました。AIを使わない形で、引き続きご利用いただけます。';
+    if (e && e.code === 'trial_used') return 'お試しのAI' + (e.limit ? '（' + e.limit + '回）' : '') + 'を、すべて使いました。AIを使わない形で、引き続きご利用いただけます。';
     return fallback;
   }
 
@@ -2581,7 +2591,7 @@
       item = { original: displayOriginal, law: res.law, message: res.reframe, insight: res.insight, nextStep: res.nextStep };
     } catch (e) {
       console.error(e);
-      hintMsg.textContent = (e && (e.code === 'login' || e.code === 'quota')) ? aiFailText(e, '') + 'いまは、AIを使わない簡易版を表示しています。' : '判定に失敗したため、簡易版を表示しています。';
+      hintMsg.textContent = (e && (e.code === 'login' || e.code === 'quota' || e.code === 'expired' || e.code === 'trial_used')) ? aiFailText(e, '') + 'いまは、AIを使わない簡易版を表示しています。' : '判定に失敗したため、簡易版を表示しています。';
       const law = classifyByKeyword(thought);
       item = { original: displayOriginal, law: law, message: law.message, insight: '', nextStep: '' };
     }
@@ -3228,7 +3238,7 @@
       newIntent = await rewriteIntent(grief, selectedValue);
     } catch (e) {
       console.error(e);
-      if (e && (e.code === 'login' || e.code === 'quota')){
+      if (e && (e.code === 'login' || e.code === 'quota' || e.code === 'expired' || e.code === 'trial_used')){
         // AIを使えないときは、自分で書き換えられるように、空の欄を出す
         hintMsg2.textContent = aiFailText(e, '') + '下の欄に、「私は〜のために、自分で選んで〜している。」の形で、自分で書いてみましょう。';
         newIntent = '';
@@ -4040,6 +4050,7 @@
   const acctMenuBtn = document.getElementById('acctMenuBtn');
   const acctMenu = document.getElementById('acctMenu');
   const acctEmail = document.getElementById('acctEmail');
+  const acctPlan = document.getElementById('acctPlan');
   const acctSyncNow = document.getElementById('acctSyncNow');
   const acctLogout = document.getElementById('acctLogout');
   const acctDelete = document.getElementById('acctDelete');
@@ -4298,8 +4309,25 @@
     syncTimer = setTimeout(runSync, ms == null ? 1500 : ms);
   }
 
+  // AIの利用条件（購入者特典・お試し）を、メニューに表示する
+  async function refreshPlan(){
+    if (!acctPlan) return;
+    acctPlan.textContent = '';
+    if (!sb || !sbUser || !sbProfile || !sbProfile.access_granted) return;
+    try {
+      const { data, error } = await sb.rpc('ai_status');
+      if (error || !data) return;
+      const fmt = iso => new Date(Date.parse(iso) - 1).toLocaleDateString('ja-JP', { timeZone: 'Asia/Tokyo', year: 'numeric', month: 'long', day: 'numeric' });
+      if (data.plan === 'promo') acctPlan.textContent = data.ends_at ? 'AIの購入者特典：' + fmt(data.ends_at) + 'まで' : '';
+      else if (data.plan === 'expired') acctPlan.textContent = 'AIの購入者特典は、終了しました';
+      else if (data.plan === 'trial') acctPlan.textContent = 'AIのお試し：あと' + Math.max(data.trial_total - data.trial_used, 0) + '回';
+      else if (data.plan === 'trial_used') acctPlan.textContent = 'AIのお試しは、すべて使いました';
+    } catch (e) { /* 表示できなくても続ける */ }
+  }
+
   // AIを呼ぶときの、ログインの証明（中継役が確かめる）
   aiAuth = {
+    refreshPlan: refreshPlan,
     token: async function(){
       const err = new Error('login'); err.code = 'login';
       if (!sb || !sbUser || !sbProfile || !sbProfile.access_granted) throw err;
@@ -4465,6 +4493,7 @@
       });
     }
     meta.uid = sbUser.id; saveMeta();
+    refreshPlan();
     await runSync();
   }
 
